@@ -198,6 +198,8 @@ When search is active:
 - the preview pane auto-scrolls to the first visible match
 - if the first match is inside a collapsed code/log block, that local block expands before scrolling
 
+If the current query has multiple matches in the focused preview, show lightweight `Prev / Next match` navigation near the preview context area.
+
 #### Grouping behavior
 
 Only one grouping mode may be active at a time:
@@ -237,6 +239,8 @@ The main pane displays the focused session:
 - highlighted snippets when relevant
 
 The preview pane is for relevance checking before generation, not full transcript inspection. Code/log blocks should be collapsed by default in preview. Raw transcript excerpts should remain available only as a fallback drill-down, not as the primary reading layer.
+
+Do not add a separate `Highlight Natural Language` toggle in v1. Normalized preview plus default code/log collapsing is the single preview-denoise model.
 
 The `Generate Workbook` action lives in the left-rail footer because selection happens there. Triggering generation opens a lightweight confirmation sheet that shows:
 
@@ -300,8 +304,12 @@ The workbook should not reuse the Search page’s heavy left rail. Workbook loca
 - `Enter` or explicit field action: begin editing
 - `Cmd/Ctrl+Enter`: save and advance to the next item
 - `Esc` / `Cancel`: discard the current unsaved edit buffer
+- `↑ / ↓` and `j / k`: move selection between cards when not editing
+- `Delete / Backspace`: move the selected card to `Deleted` when not editing
 
 Do not use hover-to-edit. Do not let the provenance panel track hover churn.
+
+When a text field is in edit mode, `j / k`, `↑ / ↓`, and deletion keys should behave like normal text-editing keys rather than card-level navigation commands.
 
 #### Editable versus read-only fields
 
@@ -317,6 +325,8 @@ Editable fields may include:
 
 This preserves stable provenance anchors for source highlighting and source-position jumps.
 
+Modified cards should show a visible modified indicator plus a lightweight `Revert` affordance. The indicator should be semantic and theme-safe; the spec should not hard-code one exact accent color.
+
 #### Provenance panel
 
 The provenance panel opens on demand from the selected card through a control such as `View source` or `Context`.
@@ -331,6 +341,10 @@ It should show:
 - optional raw excerpt fallback
 
 It should not be a permanently reserved peer column in the default workbook layout.
+
+If the current item’s highlighted source has multiple matches in the provenance snippet, show lightweight `Prev / Next match` navigation there as well.
+
+Do not add same-source card clustering to v1. If later needed, treat it as a follow-up optimization after the core ordering and provenance model prove stable.
 
 ## Settings
 
