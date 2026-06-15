@@ -1,0 +1,3 @@
+{"type":"system","timestamp":"2026-06-15T12:00:00.000Z","sessionId":"claude-session-1","cwd":"/workspace/demo","message":{"content":"meta"}}
+{"type":"user","timestamp":"2026-06-15T12:00:01.000Z","sessionId":"claude-session-1","cwd":"/workspace/demo","message":{"content":"How should we structure state?"}}
+{"type":"assistant","timestamp":"2026-06-15T12:00:03.000Z","sessionId":"claude-session-1","cwd":"/workspace/demo","message":{"content":[{"type":"text","text":"Start with Zustand for local UI intent and Query for async state."}]}}

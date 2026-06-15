@@ -1,0 +1,7 @@
+{
+  "id": "prt_user",
+  "sessionID": "ses_fixture123",
+  "messageID": "msg_user",
+  "type": "text",
+  "text": "What is a good export pipeline?"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "msg_assistant",
+  "sessionID": "ses_fixture123",
+  "role": "assistant",
+  "time": {
+    "created": 1773143205944,
+    "completed": 1773143218721
+  },
+  "path": {
+    "cwd": "/workspace/demo",
+    "root": "/workspace/demo"
+  }
+}

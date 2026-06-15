@@ -1,0 +1,10 @@
+{
+  "id": "ses_fixture123",
+  "projectID": "demo-project",
+  "directory": "/workspace/demo",
+  "title": "OpenCode fixture session",
+  "time": {
+    "created": 1773143205910,
+    "updated": 1773143685086
+  }
+}
