@@ -1,0 +1,11 @@
+{
+  "id": "msg_user",
+  "sessionID": "ses_fixture123",
+  "role": "user",
+  "time": {
+    "created": 1773143205928
+  },
+  "summary": {
+    "title": "What is a good export pipeline?"
+  }
+}

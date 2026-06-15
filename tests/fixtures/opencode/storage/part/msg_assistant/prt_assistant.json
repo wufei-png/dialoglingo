@@ -1,0 +1,7 @@
+{
+  "id": "prt_assistant",
+  "sessionID": "ses_fixture123",
+  "messageID": "msg_assistant",
+  "type": "text",
+  "text": "We should start with a normalized session index and export bundles from reviewed items."
+}

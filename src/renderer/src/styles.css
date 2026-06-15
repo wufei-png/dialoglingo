@@ -71,19 +71,20 @@ button {
   color: #111827;
 }
 
-.boot-message {
-  display: grid;
-  place-items: center;
-  padding: 32px;
+.section-button.is-active {
+  background: #111827;
+  color: white;
 }
 
-.boot-card {
-  width: min(720px, 100%);
-  padding: 32px;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.74);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.12);
+.app-content {
+  padding: 24px;
+}
+
+.search-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 20px;
+  min-height: calc(100vh - 48px);
 }
 
 .boot-eyebrow {
@@ -98,4 +99,304 @@ button {
   margin: 0;
   font-size: 32px;
   line-height: 1.15;
+}
+
+.search-rail,
+.search-preview,
+.boot-card,
+.sheet {
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.12);
+  border-radius: 28px;
+}
+
+.search-rail {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 100%;
+  padding: 18px;
+}
+
+.search-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.search-box {
+  display: grid;
+  gap: 12px;
+}
+
+.search-box input,
+.search-box select,
+.search-filters select,
+.search-toolbar select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.search-filters {
+  display: grid;
+  gap: 12px;
+}
+
+.search-filters fieldset {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 18px;
+}
+
+.search-filters label {
+  display: block;
+  margin-top: 8px;
+}
+
+.search-toolbar {
+  display: grid;
+  gap: 10px;
+}
+
+.search-toolbar button,
+.search-footer-actions button,
+.match-nav button,
+.sheet-actions button {
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.session-tree {
+  display: grid;
+  gap: 10px;
+}
+
+.session-group {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(243, 244, 246, 0.8);
+}
+
+.session-group-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.session-group-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+}
+
+.session-row {
+  margin-top: 10px;
+}
+
+.session-row label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.session-row-button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.session-row-button.is-focused {
+  background: #111827;
+  color: white;
+}
+
+.session-row-button small {
+  display: block;
+  margin-top: 6px;
+  opacity: 0.75;
+}
+
+.search-footer {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+}
+
+.search-footer-label,
+.search-preview-kicker,
+.sheet-kicker {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.search-footer-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.search-preview {
+  padding: 24px;
+}
+
+.search-preview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.search-preview-header h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.search-preview-body {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(243, 244, 246, 0.75);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 24, 39, 0.18);
+}
+
+.sheet {
+  width: min(560px, calc(100vw - 32px));
+  padding: 24px;
+}
+
+.sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.workbook-page {
+  display: grid;
+  gap: 18px;
+}
+
+.workbook-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.12);
+}
+
+.workbook-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.workbook-tabs button,
+.workbook-toolbar > button,
+.workbook-card-actions button,
+.source-panel-actions button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #e5e7eb;
+}
+
+.workbook-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workbook-stream {
+  height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.workbook-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 14px 32px rgba(17, 24, 39, 0.08);
+}
+
+.workbook-card.is-selected {
+  outline: 2px solid rgba(17, 24, 39, 0.16);
+}
+
+.workbook-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workbook-card-kicker {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.workbook-card input,
+.workbook-card textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 14px;
+  background: rgba(243, 244, 246, 0.8);
+  font: inherit;
+}
+
+.workbook-card textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.workbook-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.source-panel {
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.source-panel-actions {
+  display: flex;
+  gap: 10px;
 }
