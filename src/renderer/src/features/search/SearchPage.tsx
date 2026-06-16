@@ -47,10 +47,7 @@ export function SearchPage(props: {
   }
 
   useEffect(() => {
-    void (async () => {
-      await trpc.sessionRescan.mutate()
-      await loadSessions()
-    })()
+    void loadSessions()
   }, [])
 
   useEffect(() => {
