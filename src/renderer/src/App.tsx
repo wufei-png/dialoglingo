@@ -1,15 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { NAV_SECTIONS, type NavSectionId } from '../../shared/navigation'
+import { LaunchScanScreen } from './features/boot/LaunchScanScreen'
 import { SearchPage } from './features/search/SearchPage'
 import { WorkbookPage } from './features/workbook/WorkbookPage'
+import { useLaunchScanGate } from './lib/useLaunchScanGate'
 
 const queryClient = new QueryClient()
 
 export default function App() {
+  const bootReady = useLaunchScanGate()
   const [activeSection, setActiveSection] = useState<NavSectionId>('search')
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const [activeWorkbookId, setActiveWorkbookId] = useState<string | null>(null)
+
+  if (!bootReady) {
+    return <LaunchScanScreen />
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
