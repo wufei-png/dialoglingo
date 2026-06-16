@@ -33,7 +33,7 @@ The product is a review-and-export console for learning material derived from da
 - No in-app spaced repetition history or mastery tracking.
 - No public plugin marketplace in v1.
 - No universal transcript parser that pretends all sources are identical.
-- No direct support for arbitrary external gateways in v1 beyond `LiteLLM`.
+- No broad provider-router surface in v1 beyond one OpenAI-compatible API endpoint and the supported local CLI backends.
 - No broad global undo system across search, selection, generation, and export.
 - No full workspace-admin product inside the main search flow.
 
@@ -53,7 +53,7 @@ Recommend:
 - Full-text search: `SQLite FTS5`, implemented through raw SQL migrations and query helpers
 - IPC: `electron-trpc + Zod`
 - Background work: Electron `utilityProcess` / `worker_threads` + typed job events
-- Model layer: `LiteLLM` as the OpenAI-compatible gateway + TypeScript structured generation client + `Zod` validation
+- Model layer: OpenAI-compatible API by default, optional local Codex/Claude/OpenCode CLI backends, TypeScript structured generation client, and `Zod` validation
 - Animation: `Motion for React` layout animations + `AnimatePresence`
 - Testing: `Vitest` + fixture-driven adapter/ranking/workbook/export tests
 
@@ -367,8 +367,8 @@ Do not add same-source card clustering to v1. If later needed, treat it as a fol
 
 ### Provider
 
-- `LiteLLM base URL`
-- `LiteLLM API key`
+- `OpenAI-compatible base URL`
+- `API key`
 - `default model`
 
 ### Generation
@@ -866,24 +866,23 @@ In v1, the workbook should retain the full candidate set. Ranking primarily affe
 
 ## Provider and Model Strategy
 
-v1 external model entry is intentionally narrow.
+v1 model entry is intentionally narrow.
 
-### Supported remote entry
+### Supported entries
 
-- `LiteLLM` only
+- OpenAI-compatible API endpoint
+- Codex CLI
+- Claude CLI
+- OpenCode CLI
 
-Do not support a wide matrix of remote entry types in v1.
+Do not support a wide matrix of provider-specific API types in v1.
 
-### Future local entry
-
-- `Ollama` may be added later
-
-### Why LiteLLM-only for v1
+### Why this narrow model surface
 
 - reduces provider-configuration surface
-- reuses a mature routing/gateway layer
+- keeps LiteLLM available as an OpenAI-compatible local gateway
 - keeps DialogLingo from becoming a provider router
-- supports model diversity through one stable remote contract
+- supports subscription-plan CLI use through a small set of explicit local backends
 
 ### ModelAdapter
 
@@ -1148,7 +1147,7 @@ These should be fixture-driven wherever practical so adapter shape, ranking beha
 - launch app on macOS/Windows/Linux
 - auto-discover projects and sessions
 - select sessions by default-open state
-- generate workbook through LiteLLM
+- generate workbook through the configured model backend
 - edit/delete/restore items
 - export Anki text bundle
 - verify import into Anki
@@ -1159,7 +1158,7 @@ To keep v1 sane:
 
 - keep `Codex`, `Claude Code`, and `OpenCode` in the design
 - but allow implementation staging if one adapter proves materially harder
-- keep remote model access to `LiteLLM` only
+- keep API model access to an OpenAI-compatible endpoint, with supported local CLI backends as explicit alternatives
 - keep workbook item types to `Expression` and `Sentence`
 - keep export targets to `Anki-first + text bundles`
 

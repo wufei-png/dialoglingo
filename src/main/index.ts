@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow } from 'electron'
 import { buildRouter } from '../shared/ipc/router'
 import type { ScanEvent } from '../shared/ipc/events'
+import type { Settings } from '../shared/schemas/settings'
 import { createDb } from './db/client'
 import { runMigrations } from './db/migrate'
 import { chooseExportFallback } from './errors/sourceIssues'
@@ -184,7 +185,7 @@ function emitJobEvent(event: {
   failureReason?:
     | 'missing-provider-config'
     | 'provider-timeout'
-    | 'litellm-request-failure'
+    | 'model-request-failure'
     | 'invalid-structured-payload'
 }) {
   jobSnapshots.set(event.jobId, {
@@ -443,17 +444,7 @@ function createRouter() {
     },
     generation: {
       start: async (input: { sessionIds: string[] }) => {
-        const currentSettings = settings.get() as {
-          provider: {
-            baseUrl: string
-            apiKey: string
-            defaultModel: string
-          }
-          generation: {
-            batchSize: number
-            maxItemsPerSession: number
-          }
-        }
+        const currentSettings = settings.get() as Settings
         validateGenerationRequest({
           sessionIds: input.sessionIds,
           settings: currentSettings

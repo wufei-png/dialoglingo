@@ -17,7 +17,7 @@ export const jobEventSchema = z.object({
     .enum([
       'missing-provider-config',
       'provider-timeout',
-      'litellm-request-failure',
+      'model-request-failure',
       'invalid-structured-payload'
     ])
     .optional()

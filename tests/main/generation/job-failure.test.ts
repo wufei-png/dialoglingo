@@ -20,7 +20,7 @@ describe('reduceJobEvent failures', () => {
     expect(next.failedBatchCount).toBe(1)
   })
 
-  it('captures provider timeout and LiteLLM request failure as restartable diagnostics', () => {
+  it('captures provider timeout and model request failure as restartable diagnostics', () => {
     const timeout = reduceJobEvent(
       {
         status: 'enriching',
@@ -45,11 +45,11 @@ describe('reduceJobEvent failures', () => {
         kind: 'failure',
         status: 'failed',
         failedBatchCount: 1,
-        failureReason: 'litellm-request-failure'
+        failureReason: 'model-request-failure'
       }
     )
 
     expect(timeout.failureReason).toBe('provider-timeout')
-    expect(gateway.failureReason).toBe('litellm-request-failure')
+    expect(gateway.failureReason).toBe('model-request-failure')
   })
 })

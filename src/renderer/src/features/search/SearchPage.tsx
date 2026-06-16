@@ -265,11 +265,14 @@ export function SearchPage(props: {
     try {
       const settings = (await trpc.settingsGet.query()) as Settings
       const missingProvider =
-        !settings.provider.baseUrl.trim() ||
-        !settings.provider.apiKey.trim() ||
-        !settings.provider.defaultModel.trim()
+        settings.modelBackend.kind === 'openai-compatible' &&
+        (
+          !settings.provider.baseUrl.trim() ||
+          !settings.provider.apiKey.trim() ||
+          !settings.provider.defaultModel.trim()
+        )
       if (missingProvider) {
-        setGenerationError('Configure LiteLLM base URL, API key, and model in Settings first.')
+        setGenerationError('Configure OpenAI-compatible base URL, API key, and model in Settings first.')
         return
       }
 

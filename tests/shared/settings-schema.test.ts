@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SPLIT_RATIO, settingsSchema } from '../../src/shared/schemas/settings'
+import {
+  DEFAULT_CLI_TIMEOUT_MS,
+  DEFAULT_SPLIT_RATIO,
+  settingsSchema
+} from '../../src/shared/schemas/settings'
 
 const LEGACY_SETTINGS = {
   provider: {
@@ -30,10 +34,19 @@ const LEGACY_SETTINGS = {
 } as const
 
 describe('settingsSchema', () => {
-  it('adds a compact 1:4 split ratio default to legacy settings', () => {
+  it('adds compact layout and model backend defaults to legacy settings', () => {
     const parsed = settingsSchema.parse(LEGACY_SETTINGS)
 
     expect(DEFAULT_SPLIT_RATIO).toBe(0.2)
     expect(parsed.ui.splitRatio).toBe(DEFAULT_SPLIT_RATIO)
+    expect(parsed.modelBackend).toMatchObject({
+      kind: 'openai-compatible',
+      cli: {
+        codex: { executablePath: '', model: '' },
+        claude: { executablePath: '', model: '' },
+        opencode: { executablePath: '', model: '' },
+        timeoutMs: DEFAULT_CLI_TIMEOUT_MS
+      }
+    })
   })
 })

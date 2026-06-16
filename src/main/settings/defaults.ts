@@ -1,11 +1,32 @@
 import type { Settings } from '../../shared/schemas/settings'
-import { DEFAULT_SPLIT_RATIO } from '../../shared/schemas/settings'
+import {
+  DEFAULT_MODEL_BACKEND,
+  DEFAULT_SPLIT_RATIO
+} from '../../shared/schemas/settings'
 
 export const DEFAULT_SETTINGS: Settings = {
   provider: {
     baseUrl: '',
     apiKey: '',
     defaultModel: ''
+  },
+  modelBackend: {
+    kind: DEFAULT_MODEL_BACKEND.kind,
+    cli: {
+      codex: {
+        executablePath: DEFAULT_MODEL_BACKEND.cli.codex.executablePath,
+        model: DEFAULT_MODEL_BACKEND.cli.codex.model
+      },
+      claude: {
+        executablePath: DEFAULT_MODEL_BACKEND.cli.claude.executablePath,
+        model: DEFAULT_MODEL_BACKEND.cli.claude.model
+      },
+      opencode: {
+        executablePath: DEFAULT_MODEL_BACKEND.cli.opencode.executablePath,
+        model: DEFAULT_MODEL_BACKEND.cli.opencode.model
+      },
+      timeoutMs: DEFAULT_MODEL_BACKEND.cli.timeoutMs
+    }
   },
   generation: {
     defaultLanguageDirection: 'bilingual',
