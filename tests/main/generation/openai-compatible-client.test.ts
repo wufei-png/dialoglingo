@@ -1,32 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  LiteLlmClientError,
-  enrichCandidateBatch,
-  normalizeLiteLlmChatCompletionsUrl
-} from '../../../src/main/generation/litellmClient'
+  enrichOpenAiCompatibleCandidateBatch,
+  normalizeOpenAiChatCompletionsUrl
+} from '../../../src/main/generation/openAiCompatibleClient'
+import { ModelAdapterError } from '../../../src/main/generation/modelAdapter'
 
-describe('normalizeLiteLlmChatCompletionsUrl', () => {
+describe('normalizeOpenAiChatCompletionsUrl', () => {
   it('accepts proxy root, v1 base, and full chat completions URLs', () => {
-    expect(normalizeLiteLlmChatCompletionsUrl('http://localhost:4000')).toBe(
+    expect(normalizeOpenAiChatCompletionsUrl('http://localhost:4000')).toBe(
       'http://localhost:4000/v1/chat/completions'
     )
-    expect(normalizeLiteLlmChatCompletionsUrl('http://localhost:4000/v1')).toBe(
+    expect(normalizeOpenAiChatCompletionsUrl('http://localhost:4000/v1')).toBe(
       'http://localhost:4000/v1/chat/completions'
     )
     expect(
-      normalizeLiteLlmChatCompletionsUrl(
+      normalizeOpenAiChatCompletionsUrl(
         'http://localhost:4000/v1/chat/completions'
       )
     ).toBe('http://localhost:4000/v1/chat/completions')
   })
 })
 
-describe('enrichCandidateBatch', () => {
+describe('enrichOpenAiCompatibleCandidateBatch', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('parses structured LiteLLM JSON responses', async () => {
+  it('parses structured OpenAI-compatible JSON responses', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(
         JSON.stringify({
@@ -57,7 +57,7 @@ describe('enrichCandidateBatch', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    const items = await enrichCandidateBatch({
+    const items = await enrichOpenAiCompatibleCandidateBatch({
       baseUrl: 'http://localhost:4000',
       apiKey: 'sk-test',
       model: 'gpt-4o-mini',
@@ -86,7 +86,7 @@ describe('enrichCandidateBatch', () => {
     )
 
     await expect(
-      enrichCandidateBatch({
+      enrichOpenAiCompatibleCandidateBatch({
         baseUrl: 'http://localhost:4000',
         apiKey: 'sk-test',
         model: 'gpt-4o-mini',
@@ -94,6 +94,6 @@ describe('enrichCandidateBatch', () => {
       })
     ).rejects.toMatchObject({
       reason: 'invalid-structured-payload'
-    } satisfies Partial<LiteLlmClientError>)
+    } satisfies Partial<ModelAdapterError>)
   })
 })

@@ -8,6 +8,12 @@ describe('createSettingsService', () => {
 
     expect(service.get()).toMatchObject({
       provider: { baseUrl: '', apiKey: '', defaultModel: '' },
+      modelBackend: {
+        kind: 'openai-compatible',
+        cli: {
+          timeoutMs: 120000
+        }
+      },
       generation: {
         batchSize: 8,
         boundedConcurrency: 2,

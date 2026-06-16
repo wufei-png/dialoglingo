@@ -1,41 +1,16 @@
-import { z } from 'zod'
+import {
+  ModelAdapterError,
+  learningItemJsonSchema,
+  parseLearningItemContent
+} from './modelAdapter'
 
-const learningItemDraftSchema = z.object({
-  itemType: z.enum(['Expression', 'Sentence']),
-  sourceText: z.string(),
-  targetText: z.string(),
-  gloss: z.string(),
-  contextText: z.string(),
-  explanation: z.string(),
-  quizPrompt: z.string(),
-  quizAnswer: z.string(),
-  tags: z.array(z.string())
-})
-
-const responsePayloadSchema = z.union([
-  z.array(learningItemDraftSchema),
-  z.object({ items: z.array(learningItemDraftSchema) }).transform((value) => value.items)
-])
-
-export type LearningItemDraft = z.infer<typeof learningItemDraftSchema>
-
-export class LiteLlmClientError extends Error {
-  constructor(
-    message: string,
-    readonly reason:
-      | 'provider-timeout'
-      | 'litellm-request-failure'
-      | 'invalid-structured-payload'
-  ) {
-    super(message)
-    this.name = 'LiteLlmClientError'
-  }
-}
-
-export function normalizeLiteLlmChatCompletionsUrl(baseUrl: string) {
+export function normalizeOpenAiChatCompletionsUrl(baseUrl: string) {
   const trimmed = baseUrl.trim()
   if (!trimmed) {
-    throw new LiteLlmClientError('LiteLLM base URL is required.', 'litellm-request-failure')
+    throw new ModelAdapterError(
+      'OpenAI-compatible base URL is required.',
+      'model-request-failure'
+    )
   }
 
   const url = new URL(trimmed)
@@ -52,48 +27,6 @@ export function normalizeLiteLlmChatCompletionsUrl(baseUrl: string) {
 
   url.pathname = `${normalizedPath}/v1/chat/completions`.replace(/^\/?/, '/')
   return url.toString()
-}
-
-function learningItemJsonSchema() {
-  const itemProperties = {
-    itemType: { type: 'string', enum: ['Expression', 'Sentence'] },
-    sourceText: { type: 'string' },
-    targetText: { type: 'string' },
-    gloss: { type: 'string' },
-    contextText: { type: 'string' },
-    explanation: { type: 'string' },
-    quizPrompt: { type: 'string' },
-    quizAnswer: { type: 'string' },
-    tags: { type: 'array', items: { type: 'string' } }
-  }
-
-  return {
-    type: 'object',
-    additionalProperties: false,
-    properties: {
-      items: {
-        type: 'array',
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          properties: itemProperties,
-          required: Object.keys(itemProperties)
-        }
-      }
-    },
-    required: ['items']
-  }
-}
-
-function parseContent(content: string) {
-  try {
-    return responsePayloadSchema.parse(JSON.parse(content))
-  } catch (error) {
-    throw new LiteLlmClientError(
-      error instanceof Error ? error.message : 'Invalid structured payload.',
-      'invalid-structured-payload'
-    )
-  }
 }
 
 async function requestCompletion(input: {
@@ -131,9 +64,9 @@ async function requestCompletion(input: {
     })
 
     if (!response.ok) {
-      throw new LiteLlmClientError(
-        `LiteLLM request failed with HTTP ${response.status}.`,
-        'litellm-request-failure'
+      throw new ModelAdapterError(
+        `OpenAI-compatible request failed with HTTP ${response.status}.`,
+        'model-request-failure'
       )
     }
 
@@ -142,29 +75,29 @@ async function requestCompletion(input: {
     }
     return json.choices?.[0]?.message?.content ?? ''
   } catch (error) {
-    if (error instanceof LiteLlmClientError) {
+    if (error instanceof ModelAdapterError) {
       throw error
     }
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new LiteLlmClientError('LiteLLM request timed out.', 'provider-timeout')
+      throw new ModelAdapterError('OpenAI-compatible request timed out.', 'provider-timeout')
     }
-    throw new LiteLlmClientError(
-      error instanceof Error ? error.message : 'LiteLLM request failed.',
-      'litellm-request-failure'
+    throw new ModelAdapterError(
+      error instanceof Error ? error.message : 'OpenAI-compatible request failed.',
+      'model-request-failure'
     )
   } finally {
     clearTimeout(timeout)
   }
 }
 
-export async function enrichCandidateBatch(input: {
+export async function enrichOpenAiCompatibleCandidateBatch(input: {
   baseUrl: string
   apiKey: string
   model: string
   prompt: string
   timeoutMs?: number
 }) {
-  const url = normalizeLiteLlmChatCompletionsUrl(input.baseUrl)
+  const url = normalizeOpenAiChatCompletionsUrl(input.baseUrl)
   const timeoutMs = input.timeoutMs ?? 60_000
 
   try {
@@ -183,11 +116,11 @@ export async function enrichCandidateBatch(input: {
         }
       }
     })
-    return parseContent(content)
+    return parseLearningItemContent(content)
   } catch (error) {
     if (
-      error instanceof LiteLlmClientError &&
-      error.reason !== 'litellm-request-failure'
+      error instanceof ModelAdapterError &&
+      error.reason !== 'model-request-failure'
     ) {
       throw error
     }
@@ -200,6 +133,6 @@ export async function enrichCandidateBatch(input: {
       timeoutMs,
       responseFormat: { type: 'json_object' }
     })
-    return parseContent(content)
+    return parseLearningItemContent(content)
   }
 }

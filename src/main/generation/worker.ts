@@ -1,10 +1,8 @@
 import { parentPort } from 'node:worker_threads'
+import type { Settings } from '../../shared/schemas/settings'
 import { mineCandidateGroups } from './candidates'
-import {
-  LiteLlmClientError,
-  enrichCandidateBatch,
-  type LearningItemDraft
-} from './litellmClient'
+import { enrichCandidateBatch } from './enrichCandidateBatch'
+import { ModelAdapterError, type LearningItemDraft } from './modelAdapter'
 import { precleanTurns } from './preclean'
 
 type WorkerTurn = {
@@ -36,11 +34,8 @@ type StartMessage = {
   type: 'start'
   jobId: string
   sessions: WorkerSession[]
-  provider: {
-    baseUrl: string
-    apiKey: string
-    defaultModel: string
-  }
+  provider: Settings['provider']
+  modelBackend: Settings['modelBackend']
   generation: {
     batchSize: number
     maxItemsPerSession: number
@@ -72,7 +67,7 @@ function emit(input: {
   failedBatchCount?: number
   failureReason?:
     | 'provider-timeout'
-    | 'litellm-request-failure'
+    | 'model-request-failure'
     | 'invalid-structured-payload'
 }) {
   parentPort?.postMessage(input)
@@ -202,9 +197,8 @@ async function runStart(message: StartMessage) {
 
       try {
         const drafts = await enrichCandidateBatch({
-          baseUrl: message.provider.baseUrl,
-          apiKey: message.provider.apiKey,
-          model: message.provider.defaultModel,
+          provider: message.provider,
+          modelBackend: message.modelBackend,
           prompt: toPrompt({ sessionTitle: session.title, candidates: batch })
         })
 
@@ -224,9 +218,9 @@ async function runStart(message: StartMessage) {
       } catch (error) {
         failedBatchCount += 1
         const reason =
-          error instanceof LiteLlmClientError
+          error instanceof ModelAdapterError
             ? error.reason
-            : 'litellm-request-failure'
+            : 'model-request-failure'
 
         emit({
           kind: 'failure',

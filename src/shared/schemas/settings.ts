@@ -3,6 +3,52 @@ import { z } from 'zod'
 export const DEFAULT_SPLIT_RATIO = 0.2
 export const MIN_SPLIT_RATIO = 0.16
 export const MAX_SPLIT_RATIO = 0.7
+export const DEFAULT_CLI_TIMEOUT_MS = 120_000
+
+export const DEFAULT_MODEL_BACKEND = {
+  kind: 'openai-compatible',
+  cli: {
+    codex: {
+      executablePath: '',
+      model: ''
+    },
+    claude: {
+      executablePath: '',
+      model: ''
+    },
+    opencode: {
+      executablePath: '',
+      model: ''
+    },
+    timeoutMs: DEFAULT_CLI_TIMEOUT_MS
+  }
+} as const
+
+export const modelBackendKindSchema = z.enum([
+  'openai-compatible',
+  'codex-cli',
+  'claude-cli',
+  'opencode-cli'
+])
+
+const cliCommandSettingsSchema = z.object({
+  executablePath: z.string().default(''),
+  model: z.string().default('')
+})
+
+export const modelBackendSchema = z
+  .object({
+    kind: modelBackendKindSchema.default(DEFAULT_MODEL_BACKEND.kind),
+    cli: z
+      .object({
+        codex: cliCommandSettingsSchema.default(DEFAULT_MODEL_BACKEND.cli.codex),
+        claude: cliCommandSettingsSchema.default(DEFAULT_MODEL_BACKEND.cli.claude),
+        opencode: cliCommandSettingsSchema.default(DEFAULT_MODEL_BACKEND.cli.opencode),
+        timeoutMs: z.number().int().positive().default(DEFAULT_CLI_TIMEOUT_MS)
+      })
+      .default(DEFAULT_MODEL_BACKEND.cli)
+  })
+  .default(DEFAULT_MODEL_BACKEND)
 
 export const settingsSchema = z.object({
   provider: z.object({
@@ -10,6 +56,7 @@ export const settingsSchema = z.object({
     apiKey: z.string(),
     defaultModel: z.string()
   }),
+  modelBackend: modelBackendSchema,
   generation: z.object({
     defaultLanguageDirection: z.enum(['en-zh', 'zh-en', 'bilingual']),
     batchSize: z.number().int().positive(),
@@ -47,3 +94,4 @@ export const settingsSchema = z.object({
 })
 
 export type Settings = z.infer<typeof settingsSchema>
+export type ModelBackendKind = z.infer<typeof modelBackendKindSchema>

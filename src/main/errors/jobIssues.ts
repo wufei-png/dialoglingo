@@ -12,7 +12,7 @@ export function reduceJobEvent(
     failureReason?:
       | 'invalid-structured-payload'
       | 'provider-timeout'
-      | 'litellm-request-failure'
+      | 'model-request-failure'
   }
 ) {
   return {

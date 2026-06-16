@@ -1181,18 +1181,27 @@ button {
   color: #4b5563;
 }
 
-.settings-form input {
+.settings-form input,
+.settings-form select {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 12px;
   border: 1px solid rgba(17, 24, 39, 0.12);
   border-radius: 8px;
+  background: #fff;
 }
 
 .settings-save-message {
   margin: 0;
   color: #047857;
   font-size: 13px;
+}
+
+.settings-help {
+  margin: -4px 0 2px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .settings-section-heading {

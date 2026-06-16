@@ -1,4 +1,5 @@
 import { jobEventSchema } from '../../shared/ipc/events'
+import type { Settings } from '../../shared/schemas/settings'
 import { spawnGenerationWorker } from './spawnGenerationWorker'
 
 export async function runGenerationJob(input: {
@@ -13,12 +14,8 @@ export async function runGenerationJob(input: {
       isToolNoise?: boolean
     }>
   }>
-  settings: {
-    provider: {
-      baseUrl: string
-      apiKey: string
-      defaultModel: string
-    }
+  settings: Pick<Settings, 'modelBackend'> & {
+    provider: Settings['provider']
     generation: {
       batchSize: number
       maxItemsPerSession: number
@@ -62,7 +59,7 @@ export async function runGenerationJob(input: {
         warningCount: 0,
         failureCount: 1,
         failedBatchCount: 1,
-        failureReason: 'litellm-request-failure',
+        failureReason: 'model-request-failure',
         currentSessionTitle: null,
         currentBatchLabel: error.message
       })
@@ -74,6 +71,7 @@ export async function runGenerationJob(input: {
     jobId: input.jobId,
     sessions: input.sessions,
     provider: input.settings.provider,
+    modelBackend: input.settings.modelBackend,
     generation: input.settings.generation
   })
 
