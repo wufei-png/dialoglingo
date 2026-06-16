@@ -44,7 +44,8 @@ export function createTestDb(): InstanceType<typeof BetterSqlite3> {
       session_id UNINDEXED,
       title,
       preview,
-      normalized_text
+      normalized_text,
+      tokenize='trigram'
     );
 
     create trigger sessions_ai after insert on sessions begin

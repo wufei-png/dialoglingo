@@ -2,6 +2,53 @@ import { describe, expect, it } from 'vitest'
 import { createSessionSearch } from '../../../src/main/search/querySessions'
 import { createTestDb } from '../testDb'
 
+function insertSession(
+  db: ReturnType<typeof createTestDb>,
+  input: {
+    id: string
+    title: string
+    preview?: string
+    searchText?: string
+    sourceType?: 'codex' | 'claude' | 'opencode'
+    projectId?: string
+    updatedAt?: string
+    archived?: boolean
+  }
+) {
+  db.prepare(
+    `
+      insert into sessions (
+        id,
+        source_type,
+        source_session_id,
+        project_id,
+        title,
+        started_at,
+        updated_at,
+        preview,
+        search_text,
+        is_archived,
+        raw_locator,
+        hash
+      )
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+  ).run(
+    input.id,
+    input.sourceType ?? 'codex',
+    input.id,
+    input.projectId ?? null,
+    input.title,
+    '2026-06-15T00:00:00Z',
+    input.updatedAt ?? '2026-06-15T00:10:00Z',
+    input.preview ?? 'preview',
+    input.searchText ?? 'body',
+    input.archived ? 1 : 0,
+    'fixture',
+    `h-${input.id}`
+  )
+}
+
 describe('createSessionSearch', () => {
   it('searches titles and normalized transcript text', () => {
     const db = createTestDb()
@@ -253,5 +300,128 @@ describe('createSessionSearch', () => {
     })
 
     expect(rows.map((row) => row.sessionId)).toEqual(['s1'])
+  })
+
+  it('matches Chinese substrings with trigram search', () => {
+    const db = createTestDb()
+    insertSession(db, {
+      id: 's1',
+      title: '日志监控 Codex 会话',
+      searchText: '这里讨论日志监控方案'
+    })
+
+    const search = createSessionSearch(db)
+    const fullRows = search({
+      query: '日志监控',
+      scope: 'titles',
+      groupBy: 'platform',
+      timeRange: null,
+      projects: [],
+      platforms: [],
+      includeArchived: false
+    })
+    const partialRows = search({
+      query: '日志监',
+      scope: 'titles',
+      groupBy: 'platform',
+      timeRange: null,
+      projects: [],
+      platforms: [],
+      includeArchived: false
+    })
+
+    expect(fullRows.map((row) => row.sessionId)).toEqual(['s1'])
+    expect(partialRows.map((row) => row.sessionId)).toEqual(['s1'])
+    expect(partialRows[0].snippet).toContain('<mark>日志监</mark>')
+  })
+
+  it('normalizes everyday spaces and punctuation in search input', () => {
+    const db = createTestDb()
+    insertSession(db, {
+      id: 's1',
+      title: '日志监控 Codex 会话',
+      searchText: '这里讨论日志监控方案'
+    })
+
+    const search = createSessionSearch(db)
+    const baseInput = {
+      scope: 'titles' as const,
+      groupBy: 'platform' as const,
+      timeRange: null,
+      projects: [],
+      platforms: [],
+      includeArchived: false
+    }
+
+    expect(search({ ...baseInput, query: '日志 监' }).map((row) => row.sessionId)).toEqual([
+      's1'
+    ])
+    expect(search({ ...baseInput, query: '日志-监' }).map((row) => row.sessionId)).toEqual([
+      's1'
+    ])
+  })
+
+  it('keeps title and transcript scopes isolated for active sessions', () => {
+    const db = createTestDb()
+    insertSession(db, {
+      id: 'title-only',
+      title: '日志监控 title',
+      searchText: 'body only'
+    })
+    insertSession(db, {
+      id: 'transcript-only',
+      title: 'plain title',
+      searchText: '日志监控 transcript'
+    })
+
+    const search = createSessionSearch(db)
+    const baseInput = {
+      query: '日志监',
+      groupBy: 'platform' as const,
+      timeRange: null,
+      projects: [],
+      platforms: [],
+      includeArchived: false
+    }
+
+    expect(
+      search({ ...baseInput, scope: 'titles' }).map((row) => row.sessionId)
+    ).toEqual(['title-only'])
+    expect(
+      search({ ...baseInput, scope: 'transcript' }).map((row) => row.sessionId)
+    ).toEqual(['transcript-only'])
+  })
+
+  it('falls back to scoped LIKE matching for one- and two-character queries', () => {
+    const db = createTestDb()
+    insertSession(db, {
+      id: 'title-short',
+      title: '日志',
+      searchText: 'body only'
+    })
+    insertSession(db, {
+      id: 'transcript-short',
+      title: 'plain title',
+      searchText: '日志'
+    })
+
+    const search = createSessionSearch(db)
+    const baseInput = {
+      query: '日志',
+      groupBy: 'platform' as const,
+      timeRange: null,
+      projects: [],
+      platforms: [],
+      includeArchived: false
+    }
+
+    const titleRows = search({ ...baseInput, scope: 'titles' })
+    const transcriptRows = search({ ...baseInput, scope: 'transcript' })
+
+    expect(titleRows.map((row) => row.sessionId)).toEqual(['title-short'])
+    expect(titleRows[0].snippet).toContain('<mark>日志</mark>')
+    expect(transcriptRows.map((row) => row.sessionId)).toEqual([
+      'transcript-short'
+    ])
   })
 })

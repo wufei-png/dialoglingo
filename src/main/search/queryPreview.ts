@@ -1,10 +1,11 @@
 import type Database from 'better-sqlite3'
-
-function toMatchQuery(query: string) {
-  return `"${query.replaceAll('"', '""')}"`
-}
-
-type QueryScope = 'all' | 'titles' | 'transcript'
+import {
+  buildHighlightedSnippet,
+  buildScopedFtsMatchQuery,
+  buildScopedLikeCondition,
+  buildSearchQueryPlan,
+  type QueryScope
+} from './searchQuery'
 
 function snippetColumns(scope: QueryScope) {
   if (scope === 'titles') {
@@ -33,10 +34,53 @@ export function createPreviewQuery(db: Database.Database) {
       )
       .all(sessionId)
 
-    if (!query.trim()) {
+    const plan = buildSearchQueryPlan(query)
+
+    if (!plan.trimmed) {
       return {
         turns,
         snippet: null
+      }
+    }
+
+    if (plan.useLikeFallback) {
+      const like = buildScopedLikeCondition(scope, plan.variants, 's')
+      const row = db
+        .prepare(
+          `
+            select
+              s.title,
+              s.preview,
+              s.search_text as searchText
+            from sessions s
+            where s.id = ? and ${like.sql}
+            limit 1
+          `
+        )
+        .get(sessionId, ...like.args) as
+        | { title: string; preview: string; searchText: string }
+        | undefined
+
+      const source =
+        scope === 'titles'
+          ? row?.title
+          : scope === 'transcript'
+            ? row?.searchText
+            : [row?.searchText, row?.preview, row?.title].find((value) =>
+                value
+                  ? plan.variants.some((variant) =>
+                      value.toLocaleLowerCase().includes(variant.toLocaleLowerCase())
+                    )
+                  : false
+              )
+
+      return {
+        turns,
+        snippet: source
+          ? {
+              snippet: buildHighlightedSnippet(source, plan.variants)
+            }
+          : null
       }
     }
 
@@ -51,7 +95,9 @@ export function createPreviewQuery(db: Database.Database) {
             limit 1
           `
         )
-        .get(sessionId, toMatchQuery(query.trim())) as { snippet?: string } | undefined
+        .get(sessionId, buildScopedFtsMatchQuery(scope, plan.variants)) as
+        | { snippet?: string }
+        | undefined
 
       if (row?.snippet?.includes('<mark>')) {
         snippet = row
