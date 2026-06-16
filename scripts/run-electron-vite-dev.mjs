@@ -26,6 +26,9 @@ function resolveElectronBetterSqliteBindingPath() {
   )
 }
 
+const debugMode = process.argv.includes('--debug')
+const logLevel = process.env.DIALOGLINGO_LOG_LEVEL || (debugMode ? 'debug' : 'info')
+
 const electronExecPath = process.env.ELECTRON_EXEC_PATH || resolveElectronExecPath()
 const electronBetterSqliteBindingPath =
   process.env.DIALOGLINGO_BETTER_SQLITE3_BINDING ||
@@ -43,6 +46,8 @@ if (!existsSync(electronBetterSqliteBindingPath)) {
   process.exit(1)
 }
 
+console.log(`[dialoglingo:dev] log level=${logLevel}${debugMode ? ' (debug mode)' : ''}`)
+
 const child = spawn(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
   ['electron-vite', 'dev'],
@@ -50,8 +55,15 @@ const child = spawn(
     stdio: 'inherit',
     env: {
       ...process.env,
+      DIALOGLINGO_LOG_LEVEL: logLevel,
       ELECTRON_EXEC_PATH: electronExecPath,
-      DIALOGLINGO_BETTER_SQLITE3_BINDING: electronBetterSqliteBindingPath
+      DIALOGLINGO_BETTER_SQLITE3_BINDING: electronBetterSqliteBindingPath,
+      ...(debugMode
+        ? {
+            ELECTRON_ENABLE_LOGGING: '1',
+            DIALOGLINGO_OPEN_DEVTOOLS: '1'
+          }
+        : {})
     }
   }
 )

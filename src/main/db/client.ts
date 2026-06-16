@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { logger } from '../logging'
 
 export type DbClient = {
   sqlite: InstanceType<typeof BetterSqlite3>
@@ -33,6 +34,11 @@ function resolveNativeBinding() {
 
 export function createDb(filename: string): DbClient {
   const nativeBinding = resolveNativeBinding()
+  logger.debug('db', 'opening sqlite database', {
+    filename,
+    nativeBinding: nativeBinding ?? 'default'
+  })
+
   const sqlite = nativeBinding
     ? new BetterSqlite3(filename, { nativeBinding })
     : new BetterSqlite3(filename)
