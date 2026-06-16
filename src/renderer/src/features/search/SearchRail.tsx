@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import type { NavSectionId } from '../../../../shared/navigation'
 import { SectionTabs } from '../../components/SectionTabs'
 import { GenerateWorkbookSheet } from './GenerateWorkbookSheet'
@@ -20,6 +21,47 @@ type SearchSession = {
   sourceType: SearchPlatform
   projectPath: string | null
   updatedAt: string
+}
+
+function CollapsibleFilterSection(props: {
+  title: string
+  summary: string
+  children: ReactNode
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const bodyId = useId()
+
+  return (
+    <section className="collapsible-filter-section">
+      <button
+        type="button"
+        className="collapsible-section-header"
+        aria-expanded={expanded}
+        aria-controls={bodyId}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <span className="collapsible-section-title">
+          <span className="collapsible-caret" aria-hidden="true" />
+          <span>{props.title}</span>
+        </span>
+        <span className="collapsible-section-summary">{props.summary}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded ? (
+          <motion.div
+            id={bodyId}
+            className="collapsible-section-body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+          >
+            <div className="collapsible-section-content">{props.children}</div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </section>
+  )
 }
 
 export function SearchRail(props: {
@@ -133,26 +175,32 @@ export function SearchRail(props: {
             <option value="all-time">All time</option>
           </select>
 
-          <fieldset>
-            <legend>Platform</legend>
-            {PLATFORM_OPTIONS.map((platform) => (
-              <label key={platform}>
-                <input
-                  type="checkbox"
-                  checked={props.platformFilter.includes(platform)}
-                  onChange={() =>
-                    props.onPlatformFilterChange(
-                      togglePlatformFilter(props.platformFilter, platform)
-                    )
-                  }
-                />
-                {PLATFORM_LABELS[platform]}
-              </label>
-            ))}
-          </fieldset>
+          <CollapsibleFilterSection
+            title="Platform"
+            summary={`${props.platformFilter.length}/${PLATFORM_OPTIONS.length}`}
+          >
+            <div className="filter-options">
+              {PLATFORM_OPTIONS.map((platform) => (
+                <label key={platform}>
+                  <input
+                    type="checkbox"
+                    checked={props.platformFilter.includes(platform)}
+                    onChange={() =>
+                      props.onPlatformFilterChange(
+                        togglePlatformFilter(props.platformFilter, platform)
+                      )
+                    }
+                  />
+                  <span className="filter-option-label">{PLATFORM_LABELS[platform]}</span>
+                </label>
+              ))}
+            </div>
+          </CollapsibleFilterSection>
 
-          <fieldset>
-            <legend>Projects ({selectedProjectCount}/{props.projects.length})</legend>
+          <CollapsibleFilterSection
+            title="Projects"
+            summary={`${selectedProjectCount}/${props.projects.length}`}
+          >
             <div className="filter-options">
               {props.projects.map((project) => (
                 <label key={project.id} title={project.localPath}>
@@ -161,11 +209,11 @@ export function SearchRail(props: {
                     checked={props.selectedProjectIds.has(project.id)}
                     onChange={() => toggleProject(project.id)}
                   />
-                  {project.name}
+                  <span className="filter-option-label">{project.name}</span>
                 </label>
               ))}
             </div>
-          </fieldset>
+          </CollapsibleFilterSection>
         </div>
 
         <div className="search-toolbar">

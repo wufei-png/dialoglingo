@@ -19,12 +19,11 @@ export function SessionTree(props: {
         {props.groups.map((group) => (
           <motion.section
             key={group.id}
-            layout
             className="session-group"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
           >
             <button
               type="button"
@@ -32,47 +31,47 @@ export function SessionTree(props: {
               aria-expanded={group.expanded}
               onClick={() => props.onToggleGroup(group.id)}
             >
-              <span>
-                <span className="session-group-caret">{group.expanded ? 'v' : '>'}</span>
-                {group.label}
+              <span className="session-group-title">
+                <span className="collapsible-caret" aria-hidden="true" />
+                <span>{group.label}</span>
               </span>
-              <span>
+              <span className="session-group-count">
                 {group.selectedCount}/{group.totalCount}
               </span>
             </button>
-            {group.expanded ? (
-              <ul className="session-group-list">
-                <AnimatePresence initial={false}>
-                  {group.rows.map((row) => (
-                    <motion.li
-                      key={row.sessionId}
-                      layout
-                      className="session-row"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.12, ease: 'easeOut' }}
-                    >
-                      <label>
-                        <input
-                          type="checkbox"
-                          checked={row.selected}
-                          onChange={() => props.onToggleSession(row.sessionId)}
-                        />
-                        <button
-                          type="button"
-                          className={row.focused ? 'session-row-button is-focused' : 'session-row-button'}
-                          title={row.title}
-                          onClick={() => props.onFocusSession(row.sessionId)}
-                        >
-                          <span>{row.title}</span>
-                        </button>
-                      </label>
-                    </motion.li>
-                  ))}
-                </AnimatePresence>
-              </ul>
-            ) : null}
+            <AnimatePresence initial={false}>
+              {group.expanded ? (
+                <motion.div
+                  className="session-group-body"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.14, ease: 'easeOut' }}
+                >
+                  <ul className="session-group-list">
+                    {group.rows.map((row) => (
+                      <li key={row.sessionId} className="session-row">
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={row.selected}
+                            onChange={() => props.onToggleSession(row.sessionId)}
+                          />
+                          <button
+                            type="button"
+                            className={row.focused ? 'session-row-button is-focused' : 'session-row-button'}
+                            title={row.title}
+                            onClick={() => props.onFocusSession(row.sessionId)}
+                          >
+                            <span>{row.title}</span>
+                          </button>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </motion.section>
         ))}
       </AnimatePresence>
