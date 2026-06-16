@@ -47,7 +47,23 @@ export function SearchPage(props: {
   }
 
   useEffect(() => {
-    void loadSessions()
+    void (async () => {
+      try {
+        const status = await trpc.launchScanStatus.query()
+
+        if (!status.scanOnLaunch) {
+          await trpc.sessionRescan.mutate()
+        }
+
+        await loadSessions()
+
+        if (status.launchPlan?.focusedSessionId) {
+          setFocusedSessionId(status.launchPlan.focusedSessionId)
+        }
+      } catch {
+        await loadSessions()
+      }
+    })()
   }, [])
 
   useEffect(() => {
