@@ -1,48 +1,44 @@
 import { useState } from 'react'
+import type { NavSectionId } from '../../../../shared/navigation'
+import { SectionTabs } from '../../components/SectionTabs'
 import { GenerateWorkbookSheet } from './GenerateWorkbookSheet'
+import {
+  PLATFORM_LABELS,
+  PLATFORM_OPTIONS,
+  groupSessionsByPlatform,
+  togglePlatformFilter,
+  type SearchPlatform
+} from './searchModel'
 import { SessionTree } from './SessionTree'
 
 type SearchSession = {
   sessionId: string
   title: string
   snippet: string | null
-  sourceType: 'codex' | 'claude' | 'opencode'
+  sourceType: SearchPlatform
   projectPath: string | null
 }
 
 export function SearchRail(props: {
+  activeSection: NavSectionId
+  onChangeSection: (section: NavSectionId) => void
+  onOpenSettings: () => void
   sessions: SearchSession[]
   focusedSessionId: string | null
   selectedSessionIds: Set<string>
+  platformFilter: SearchPlatform[]
+  onPlatformFilterChange: (platforms: SearchPlatform[]) => void
   onToggleSession: (sessionId: string) => void
   onFocusSession: (sessionId: string) => void
   onRescan: () => void
   onGenerate: (sessionIds: string[]) => Promise<void>
 }) {
   const [sheetOpen, setSheetOpen] = useState(false)
-  const groups = ['codex', 'claude', 'opencode'].map((sourceType) => {
-    const rows = props.sessions
-      .filter((session) => session.sourceType === sourceType)
-      .map((session) => ({
-        sessionId: session.sessionId,
-        title: session.title,
-        snippet: session.snippet,
-        selected: props.selectedSessionIds.has(session.sessionId),
-        focused: props.focusedSessionId === session.sessionId
-      }))
-
-    return {
-      label:
-        sourceType === 'codex'
-          ? 'Codex'
-          : sourceType === 'claude'
-            ? 'Claude Code'
-            : 'OpenCode',
-      expanded: true,
-      selectedCount: rows.filter((row) => row.selected).length,
-      totalCount: rows.length,
-      rows
-    }
+  const groups = groupSessionsByPlatform({
+    sessions: props.sessions,
+    selectedPlatforms: props.platformFilter,
+    selectedSessionIds: props.selectedSessionIds,
+    focusedSessionId: props.focusedSessionId
   })
 
   const platformSummary = groups.map((group) => ({
@@ -65,6 +61,10 @@ export function SearchRail(props: {
 
   return (
     <aside className="search-rail">
+      <SectionTabs
+        activeSection={props.activeSection}
+        onChangeSection={props.onChangeSection}
+      />
       <div className="search-stack">
         <div className="search-box">
           <input placeholder="Search in titles, transcripts..." />
@@ -84,18 +84,20 @@ export function SearchRail(props: {
 
           <fieldset>
             <legend>Platform</legend>
-            <label>
-              <input type="checkbox" defaultChecked />
-              Codex
-            </label>
-            <label>
-              <input type="checkbox" defaultChecked />
-              Claude Code
-            </label>
-            <label>
-              <input type="checkbox" defaultChecked />
-              OpenCode
-            </label>
+            {PLATFORM_OPTIONS.map((platform) => (
+              <label key={platform}>
+                <input
+                  type="checkbox"
+                  checked={props.platformFilter.includes(platform)}
+                  onChange={() =>
+                    props.onPlatformFilterChange(
+                      togglePlatformFilter(props.platformFilter, platform)
+                    )
+                  }
+                />
+                {PLATFORM_LABELS[platform]}
+              </label>
+            ))}
           </fieldset>
 
           <fieldset>
@@ -158,8 +160,10 @@ export function SearchRail(props: {
           <button type="button" onClick={props.onRescan}>
             Rescan
           </button>
-          <button type="button">Settings</button>
         </div>
+        <button className="settings-utility-button" type="button" onClick={props.onOpenSettings}>
+          Settings
+        </button>
       </footer>
 
       <GenerateWorkbookSheet

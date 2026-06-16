@@ -589,3 +589,261 @@ button {
   display: flex;
   gap: 10px;
 }
+
+.app-shell {
+  display: block;
+  min-height: 100vh;
+}
+
+.app-content {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.resizable-split-pane {
+  display: grid;
+  gap: 0;
+  min-height: calc(100vh - 32px);
+}
+
+.split-pane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.split-divider {
+  position: relative;
+  width: var(--split-divider-size, 8px);
+  min-width: var(--split-divider-size, 8px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.split-divider::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.08);
+  content: "";
+}
+
+.split-divider:hover::after,
+.split-divider:focus-visible::after {
+  background: rgba(37, 99, 235, 0.62);
+}
+
+.section-tabs {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.section-tab {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(243, 244, 246, 0.92);
+  color: #111827;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.section-tab.is-active {
+  background: #111827;
+  color: #fff;
+}
+
+.search-layout,
+.workbook-layout {
+  --split-left-min: 220px;
+  --split-right-min: 420px;
+}
+
+.search-rail,
+.search-preview,
+.boot-card,
+.sheet,
+.workbook-card,
+.source-panel,
+.workbook-toolbar {
+  border-radius: 12px;
+}
+
+.search-rail {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.search-stack {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.search-footer {
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.settings-utility-button,
+.pane-utility-footer button {
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(229, 231, 235, 0.9);
+  color: #111827;
+  text-align: left;
+}
+
+.session-group {
+  border-radius: 10px;
+}
+
+.session-group-list {
+  padding-left: 0;
+  list-style: none;
+}
+
+.session-row label {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.session-row-button {
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.session-row-button span {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+}
+
+.session-row-button small {
+  display: none;
+}
+
+.session-empty-state {
+  padding: 16px;
+  border-radius: 10px;
+  background: rgba(243, 244, 246, 0.72);
+  color: #6b7280;
+}
+
+.workbook-page {
+  min-height: calc(100vh - 32px);
+}
+
+.workbook-layout {
+  align-items: stretch;
+}
+
+.workbook-left-pane,
+.workbook-right-pane {
+  display: flex;
+  min-height: calc(100vh - 32px);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.workbook-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px;
+  box-shadow: none;
+}
+
+.workbook-tabs {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.workbook-tabs button,
+.workbook-toolbar > button,
+.workbook-card-actions button,
+.source-panel-actions button,
+.workbook-right-header button {
+  border-radius: 8px;
+}
+
+.workbook-stream {
+  min-height: 0;
+  max-height: none;
+  flex: 1;
+}
+
+.workbook-empty-state,
+.workbook-progress-state {
+  flex: 1;
+}
+
+.pane-utility-footer {
+  margin-top: auto;
+}
+
+.workbook-right-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+}
+
+.workbook-right-header h2 {
+  margin: 0;
+}
+
+.workbook-right-header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.source-panel {
+  flex: 1;
+  overflow: auto;
+}
+
+.source-panel--empty {
+  display: grid;
+  place-items: center;
+  color: #6b7280;
+}
+
+.settings-sheet {
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px;
+}
+
+.settings-sheet-header,
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.settings-sheet-header h2 {
+  margin: 0;
+}
+
+.settings-sheet button {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #e5e7eb;
+  color: #111827;
+}
