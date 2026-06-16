@@ -176,19 +176,25 @@ button {
 
 .search-stack {
   display: grid;
+  align-content: start;
   gap: 16px;
+  grid-auto-rows: max-content;
 }
 
 .search-box {
   display: grid;
+  align-content: start;
   gap: 12px;
+  grid-auto-rows: max-content;
 }
 
 .search-box input,
 .search-box select,
 .search-filters select,
 .search-toolbar select {
+  box-sizing: border-box;
   width: 100%;
+  min-height: 44px;
   padding: 12px 14px;
   border: 1px solid rgba(17, 24, 39, 0.12);
   border-radius: 14px;
@@ -210,6 +216,15 @@ button {
 .search-filters label {
   display: block;
   margin-top: 8px;
+  border-radius: 8px;
+  transition: background 140ms ease;
+}
+
+.filter-options {
+  display: grid;
+  max-height: 160px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .search-toolbar {
@@ -226,6 +241,37 @@ button {
   border-radius: 14px;
   background: #e5e7eb;
   color: #111827;
+  transition: background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.search-toolbar button:hover,
+.search-footer-actions button:hover,
+.match-nav button:hover,
+.sheet-actions button:hover,
+.settings-utility-button:hover,
+.pane-utility-footer button:hover,
+.settings-sheet button:hover,
+.session-row-button:hover,
+.session-group-header:hover,
+.search-filters label:hover {
+  background: #d1d5db;
+}
+
+.search-toolbar button:active,
+.search-footer-actions button:active,
+.match-nav button:active,
+.sheet-actions button:active,
+.settings-utility-button:active,
+.pane-utility-footer button:active,
+.settings-sheet button:active,
+.session-row-button:active,
+.session-group-header:active {
+  transform: translateY(1px);
+}
+
+.sheet-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .session-tree {
@@ -240,10 +286,25 @@ button {
 }
 
 .session-group-header {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 4px 6px;
+  background: transparent;
+  color: inherit;
   display: flex;
   justify-content: space-between;
   gap: 12px;
   font-weight: 600;
+  text-align: left;
+  transition: background 140ms ease;
+}
+
+.session-group-caret {
+  display: inline-block;
+  width: 14px;
+  margin-right: 6px;
+  color: #6b7280;
 }
 
 .session-group-list {
@@ -300,10 +361,19 @@ button {
 
 .search-footer-actions {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
+.search-footer-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
 .search-preview {
+  min-height: 0;
+  overflow: auto;
   padding: 24px;
 }
 
@@ -326,6 +396,17 @@ button {
   background: rgba(243, 244, 246, 0.75);
   white-space: pre-wrap;
   line-height: 1.6;
+}
+
+.search-preview-body mark {
+  border-radius: 4px;
+  background: #fde68a;
+  color: inherit;
+  padding: 0 2px;
+}
+
+.search-preview-body mark.is-active {
+  background: #f59e0b;
 }
 
 .sheet-backdrop {
@@ -701,6 +782,7 @@ button {
   background: rgba(229, 231, 235, 0.9);
   color: #111827;
   text-align: left;
+  transition: background 140ms ease, transform 140ms ease;
 }
 
 .session-group {
@@ -824,7 +906,7 @@ button {
 }
 
 .settings-sheet {
-  width: min(360px, calc(100vw - 32px));
+  width: min(440px, calc(100vw - 32px));
   padding: 18px;
 }
 
@@ -846,4 +928,40 @@ button {
   border-radius: 8px;
   background: #e5e7eb;
   color: #111827;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.settings-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.settings-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-form span,
+.settings-section-heading {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.settings-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 8px;
+}
+
+.settings-save-message {
+  margin: 0;
+  color: #047857;
+  font-size: 13px;
+}
+
+.settings-section-heading {
+  margin: 18px 0 8px;
 }

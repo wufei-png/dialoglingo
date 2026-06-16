@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { NavSectionId } from '../../../../shared/navigation'
 import { ResizableSplitPane } from '../../components/ResizableSplitPane'
 import { SectionTabs } from '../../components/SectionTabs'
@@ -45,7 +45,7 @@ export function WorkbookPage(props: {
 
   const jobQuery = useQuery({
     enabled: Boolean(props.jobId),
-    queryKey: ['job-snapshot-fetch', props.jobId],
+    queryKey: ['job-snapshot', props.jobId],
     queryFn: async () =>
       (await trpc.jobSnapshot.query({
         jobId: props.jobId!
@@ -56,6 +56,7 @@ export function WorkbookPage(props: {
         createdItemCount: number
         warningCount: number
         failureCount: number
+        failureReason?: string | null
       }
   })
 
@@ -78,9 +79,22 @@ export function WorkbookPage(props: {
   )
 
   const hasNoWorkbook = !props.workbookId && !props.jobId
+  const isTerminalFailure =
+    jobQuery.data?.status === 'failed' || jobQuery.data?.status === 'cancelled'
   const isProgress =
     Boolean(props.jobId) &&
-    (!jobQuery.data || jobQuery.data.status !== 'completed')
+    (!jobQuery.data ||
+      !['completed', 'failed', 'cancelled'].includes(jobQuery.data.status))
+
+  useEffect(() => {
+    if (jobQuery.data?.status !== 'completed' || !props.workbookId) {
+      return
+    }
+
+    void queryClient.invalidateQueries({
+      queryKey: ['workbook', props.workbookId]
+    })
+  }, [jobQuery.data?.status, props.workbookId, queryClient])
 
   return (
     <div className="workbook-page">
@@ -108,6 +122,12 @@ export function WorkbookPage(props: {
                   {jobQuery.data?.processedSessionCount ?? 0} /{' '}
                   {jobQuery.data?.selectedSessionCount ?? 0} sessions
                 </p>
+              </div>
+            ) : isTerminalFailure ? (
+              <div className="workbook-progress-state boot-card">
+                <p className="boot-eyebrow">Generation stopped</p>
+                <h2>{jobQuery.data?.status}</h2>
+                <p>{jobQuery.data?.failureReason ?? 'No workbook was created.'}</p>
               </div>
             ) : (
               <>

@@ -5,6 +5,7 @@ export function SessionTree(props: {
   groups: SessionGroup[]
   onToggleSession: (sessionId: string) => void
   onFocusSession: (sessionId: string) => void
+  onToggleGroup: (groupId: string) => void
 }) {
   const totalRows = props.groups.reduce((count, group) => count + group.rows.length, 0)
 
@@ -25,12 +26,20 @@ export function SessionTree(props: {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
           >
-            <header className="session-group-header">
-              <span>{group.label}</span>
+            <button
+              type="button"
+              className="session-group-header"
+              aria-expanded={group.expanded}
+              onClick={() => props.onToggleGroup(group.id)}
+            >
+              <span>
+                <span className="session-group-caret">{group.expanded ? 'v' : '>'}</span>
+                {group.label}
+              </span>
               <span>
                 {group.selectedCount}/{group.totalCount}
               </span>
-            </header>
+            </button>
             {group.expanded ? (
               <ul className="session-group-list">
                 <AnimatePresence initial={false}>
