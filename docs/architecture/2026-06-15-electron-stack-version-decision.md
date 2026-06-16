@@ -149,6 +149,11 @@ npm run dev / build
   → electron-rebuild -f -w better-sqlite3   # Electron ABI 146
   → copy → better_sqlite3.electron.node
   → restore node snapshot → better_sqlite3.node
+
+plain Node tests after build
+  → npm run rebuild:native:node             # refresh better_sqlite3.node for current Node
+  → npm run capture:native:node             # refresh better_sqlite3.node-runtime.node snapshot
+  → npm run test -- --run
 ```
 
 ### 操作要点
@@ -157,6 +162,7 @@ npm run dev / build
 |---|---|
 | postinstall **不要**默认 `electron-rebuild` | 否则 Vitest 拿到 Electron ABI，Node 测试失败 |
 | `electron-rebuild` 使用 `-f -w better-sqlite3` | 仅重建目标模块，与项目现有 `scripts/prepare-electron-better-sqlite3.mjs` 一致 |
+| `npm run build` 后若要跑 Vitest，先跑 `npm run rebuild:native:node && npm run capture:native:node` | `prepare:native:electron` 会恢复 `better_sqlite3.node-runtime.node` 快照；如果该快照来自旧 Node ABI，Node 测试会报 `NODE_MODULE_VERSION` |
 | 有 prebuild 时走 `prebuild-install`；失败则 `--build-from-source` | 需本机 node-gyp 工具链（Xcode CLT / VS Build Tools 等） |
 | CI 可缓存 `~/.electron-gyp` | 加速源码编译 fallback |
 | 每次升级 Electron major/minor 后重跑 `prepare:native:electron` | ABI 变化 |
