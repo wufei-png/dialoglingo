@@ -13,7 +13,15 @@ export default defineConfig({
   },
   preload: {
     build: {
-      outDir: 'dist-electron/preload'
+      outDir: 'dist-electron/preload',
+      externalizeDeps: false,
+      rollupOptions: {
+        external: ['electron'],
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].js'
+        }
+      }
     }
   },
   renderer: {

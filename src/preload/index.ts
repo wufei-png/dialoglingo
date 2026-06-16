@@ -1,11 +1,6 @@
-import { createRequire } from 'node:module'
 import { contextBridge, ipcRenderer } from 'electron'
-import { jobEventSchema } from '../shared/ipc/events'
-
-const require = createRequire(import.meta.url)
-const { exposeElectronTRPC } = require('electron-trpc/main') as {
-  exposeElectronTRPC: () => void
-}
+import { exposeElectronTRPC } from 'electron-trpc/main'
+import { jobEventSchema, scanEventSchema } from '../shared/ipc/events'
 
 process.once('loaded', () => {
   exposeElectronTRPC()
@@ -20,6 +15,20 @@ process.once('loaded', () => {
 
       return () => {
         ipcRenderer.removeListener('dialoglingo:job-event', handler)
+      }
+    }
+  })
+
+  contextBridge.exposeInMainWorld('dialoglingoScan', {
+    subscribe(callback: (event: unknown) => void) {
+      const handler = (_event: unknown, payload: unknown) => {
+        callback(scanEventSchema.parse(payload))
+      }
+
+      ipcRenderer.on('dialoglingo:scan-event', handler)
+
+      return () => {
+        ipcRenderer.removeListener('dialoglingo:scan-event', handler)
       }
     }
   })
