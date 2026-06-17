@@ -32,3 +32,11 @@ npm run test -- --run
 ```
 
 Do not remove the Electron rebuild step. The detailed policy lives in `docs/architecture/2026-06-15-electron-stack-version-decision.md`.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=wufei-png/dialoglingo&type=Date)](https://star-history.com/#wufei-png/dialoglingo&Date)
+
+## License
+
+MIT
