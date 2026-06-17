@@ -1,5 +1,3 @@
-import { useVirtualizer } from '@tanstack/react-virtual'
-import { useRef } from 'react'
 import { WorkbookCard } from './WorkbookCard'
 
 type WorkbookRow = {
@@ -14,6 +12,7 @@ type WorkbookRow = {
     explanation?: string
     contextText?: string
     quizPrompt?: string
+    quizAnswer?: string
     tags?: string[]
   }
   sourceRefs: Array<{
@@ -45,53 +44,32 @@ export function CardStream(props: {
   onRevertItem: (itemId: string) => void
   onOpenSource: (itemId: string) => void
 }) {
-  const parentRef = useRef<HTMLDivElement | null>(null)
-  const virtualizer = useVirtualizer({
-    count: props.rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 360
-  })
-
   return (
-    <div ref={parentRef} className="workbook-stream">
-      <div
-        style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
-      >
-        {virtualizer.getVirtualItems().map((item) => (
-          <div
-            key={props.rows[item.index].id}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              transform: `translateY(${item.start}px)`
-            }}
-          >
-            <WorkbookCard
-              itemType={props.rows[item.index].itemType}
-              source={String(props.rows[item.index].currentSnapshot.sourceText ?? '')}
-              target={String(props.rows[item.index].currentSnapshot.targetText ?? '')}
-              gloss={String(props.rows[item.index].currentSnapshot.gloss ?? '')}
-              explanation={String(props.rows[item.index].currentSnapshot.explanation ?? '')}
-              quiz={String(props.rows[item.index].currentSnapshot.quizPrompt ?? '')}
-              tags={String((props.rows[item.index].currentSnapshot.tags ?? []).join(', '))}
-              deleted={props.rows[item.index].state === 'deleted'}
-              selected={props.selectedItemId === props.rows[item.index].id}
-              modified={props.rows[item.index].isEdited}
-              onSelect={() => props.onSelectItem(props.rows[item.index].id)}
-              onDelete={() => props.onDeleteItem(props.rows[item.index].id)}
-              onRestore={() => props.onRestoreItem(props.rows[item.index].id)}
-              onSave={(nextSnapshot) =>
-                props.onSaveItem(props.rows[item.index].id, nextSnapshot)
-              }
-              onCancelEdit={() => undefined}
-              onRevert={() => props.onRevertItem(props.rows[item.index].id)}
-              onOpenSource={() => props.onOpenSource(props.rows[item.index].id)}
-            />
-          </div>
-        ))}
-      </div>
+    <div className="workbook-stream">
+      {props.rows.map((row) => (
+        <WorkbookCard
+          key={row.id}
+          itemType={row.itemType}
+          source={String(row.currentSnapshot.sourceText ?? '')}
+          target={String(row.currentSnapshot.targetText ?? '')}
+          gloss={String(row.currentSnapshot.gloss ?? '')}
+          explanation={String(row.currentSnapshot.explanation ?? '')}
+          contextText={String(row.currentSnapshot.contextText ?? '')}
+          quiz={String(row.currentSnapshot.quizPrompt ?? '')}
+          quizAnswer={String(row.currentSnapshot.quizAnswer ?? '')}
+          tags={String((row.currentSnapshot.tags ?? []).join(', '))}
+          deleted={row.state === 'deleted'}
+          selected={props.selectedItemId === row.id}
+          modified={row.isEdited}
+          onSelect={() => props.onSelectItem(row.id)}
+          onDelete={() => props.onDeleteItem(row.id)}
+          onRestore={() => props.onRestoreItem(row.id)}
+          onSave={(nextSnapshot) => props.onSaveItem(row.id, nextSnapshot)}
+          onCancelEdit={() => undefined}
+          onRevert={() => props.onRevertItem(row.id)}
+          onOpenSource={() => props.onOpenSource(row.id)}
+        />
+      ))}
     </div>
   )
 }

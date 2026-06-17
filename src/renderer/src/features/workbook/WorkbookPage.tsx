@@ -31,14 +31,12 @@ export function WorkbookPage(props: {
   splitRatio: number
   onSplitRatioChange: (ratio: number) => void
   onSplitRatioCommit: (ratio: number) => void
-  onOpenSettings: () => void
   jobId: string | null
   workbookId: string | null
 }) {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'all' | 'expressions' | 'sentences' | 'deleted'>('all')
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
-  const [sourceItemId, setSourceItemId] = useState<string | null>(null)
   const [exportOpen, setExportOpen] = useState(false)
 
   useJobSubscription()
@@ -74,8 +72,8 @@ export function WorkbookPage(props: {
 
   const rows = workbookQuery.data ?? []
   const sourceItem = useMemo(
-    () => rows.find((item) => item.id === sourceItemId) ?? null,
-    [rows, sourceItemId]
+    () => rows.find((item) => item.id === selectedItemId) ?? null,
+    [rows, selectedItemId]
   )
 
   const hasNoWorkbook = !props.workbookId && !props.jobId
@@ -95,6 +93,19 @@ export function WorkbookPage(props: {
       queryKey: ['workbook', props.workbookId]
     })
   }, [jobQuery.data?.status, props.workbookId, queryClient])
+
+  useEffect(() => {
+    if (rows.length === 0) {
+      if (selectedItemId !== null) {
+        setSelectedItemId(null)
+      }
+      return
+    }
+
+    if (!selectedItemId || !rows.some((item) => item.id === selectedItemId)) {
+      setSelectedItemId(rows[0].id)
+    }
+  }, [rows, selectedItemId])
 
   return (
     <div className="workbook-page">
@@ -173,15 +184,10 @@ export function WorkbookPage(props: {
                       })
                     })
                   }}
-                  onOpenSource={setSourceItemId}
+                  onOpenSource={setSelectedItemId}
                 />
               </>
             )}
-            <footer className="pane-utility-footer">
-              <button type="button" onClick={props.onOpenSettings}>
-                Settings
-              </button>
-            </footer>
           </section>
         )}
         right={(
@@ -207,7 +213,7 @@ export function WorkbookPage(props: {
                   .map((ref) => `${ref.sessionId}\n${ref.sourceSpanRef}\n${ref.excerpt}`)
                   .join('\n\n') ?? ''
               }
-              onClose={() => setSourceItemId(null)}
+              onClose={() => setSelectedItemId(null)}
               onPrevMatch={() => undefined}
               onNextMatch={() => undefined}
             />

@@ -6,7 +6,9 @@ type Props = {
   target: string
   gloss: string
   explanation: string
+  contextText: string
   quiz: string
+  quizAnswer: string
   tags: string
   deleted?: boolean
   selected: boolean
@@ -36,7 +38,9 @@ export function WorkbookCard(props: Props) {
     target: props.target,
     gloss: props.gloss,
     explanation: props.explanation,
+    contextText: props.contextText,
     quiz: props.quiz,
+    quizAnswer: props.quizAnswer,
     tags: props.tags
   })
 
@@ -46,7 +50,9 @@ export function WorkbookCard(props: Props) {
       target: props.target,
       gloss: props.gloss,
       explanation: props.explanation,
+      contextText: props.contextText,
       quiz: props.quiz,
+      quizAnswer: props.quizAnswer,
       tags: props.tags
     })
     setIsEditing(false)
@@ -55,9 +61,43 @@ export function WorkbookCard(props: Props) {
     props.target,
     props.gloss,
     props.explanation,
+    props.contextText,
     props.quiz,
+    props.quizAnswer,
     props.tags
   ])
+
+  function resetDraft() {
+    setDraft({
+      source: props.source,
+      target: props.target,
+      gloss: props.gloss,
+      explanation: props.explanation,
+      contextText: props.contextText,
+      quiz: props.quiz,
+      quizAnswer: props.quizAnswer,
+      tags: props.tags
+    })
+    setIsEditing(false)
+    props.onCancelEdit()
+  }
+
+  function saveDraft() {
+    props.onSave({
+      sourceText: draft.source,
+      targetText: draft.target,
+      gloss: draft.gloss,
+      explanation: draft.explanation,
+      contextText: draft.contextText,
+      quizPrompt: draft.quiz,
+      quizAnswer: draft.quizAnswer,
+      tags: draft.tags
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    })
+    setIsEditing(false)
+  }
 
   return (
     <article
@@ -71,51 +111,29 @@ export function WorkbookCard(props: Props) {
       <textarea
         aria-label="Source"
         value={draft.source}
-        disabled
+        readOnly
         onChange={() => undefined}
       />
       <input
         aria-label="Target"
         value={draft.target}
-        disabled={!isEditing || props.deleted}
+        readOnly={!isEditing || props.deleted}
         onChange={(event) =>
           setDraft((current) => ({ ...current, target: event.target.value }))
         }
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-            props.onSave({
-              sourceText: draft.source,
-              targetText: draft.target,
-              gloss: draft.gloss,
-              explanation: draft.explanation,
-              contextText: draft.source,
-              quizPrompt: draft.quiz,
-              quizAnswer: draft.target,
-              tags: draft.tags
-                .split(',')
-                .map((value) => value.trim())
-                .filter(Boolean)
-            })
-            setIsEditing(false)
+            saveDraft()
           }
           if (event.key === 'Escape') {
-            setDraft({
-              source: props.source,
-              target: props.target,
-              gloss: props.gloss,
-              explanation: props.explanation,
-              quiz: props.quiz,
-              tags: props.tags
-            })
-            setIsEditing(false)
-            props.onCancelEdit()
+            resetDraft()
           }
         }}
       />
       <input
         aria-label="Gloss"
         value={draft.gloss}
-        disabled={!isEditing || props.deleted}
+        readOnly={!isEditing || props.deleted}
         onChange={(event) =>
           setDraft((current) => ({ ...current, gloss: event.target.value }))
         }
@@ -123,7 +141,7 @@ export function WorkbookCard(props: Props) {
       <textarea
         aria-label="Explanation"
         value={draft.explanation}
-        disabled={!isEditing || props.deleted}
+        readOnly={!isEditing || props.deleted}
         onChange={(event) =>
           setDraft((current) => ({ ...current, explanation: event.target.value }))
         }
@@ -131,7 +149,7 @@ export function WorkbookCard(props: Props) {
       <textarea
         aria-label="Quiz"
         value={draft.quiz}
-        disabled={!isEditing || props.deleted}
+        readOnly={!isEditing || props.deleted}
         onChange={(event) =>
           setDraft((current) => ({ ...current, quiz: event.target.value }))
         }
@@ -139,7 +157,7 @@ export function WorkbookCard(props: Props) {
       <input
         aria-label="Tags"
         value={draft.tags}
-        disabled={!isEditing || props.deleted}
+        readOnly={!isEditing || props.deleted}
         onChange={(event) =>
           setDraft((current) => ({ ...current, tags: event.target.value }))
         }
@@ -163,32 +181,17 @@ export function WorkbookCard(props: Props) {
           </button>
         )}
         {!props.deleted ? (
-          <button type="button" onClick={() => setIsEditing(true)}>
+          <button type="button" disabled={isEditing} onClick={() => setIsEditing(true)}>
             Edit
           </button>
         ) : null}
-        <button type="button" onClick={props.onCancelEdit}>
+        <button type="button" disabled={!isEditing} onClick={resetDraft}>
           Cancel
         </button>
         <button
           type="button"
-          disabled={props.deleted}
-          onClick={() => {
-            props.onSave({
-              sourceText: draft.source,
-              targetText: draft.target,
-              gloss: draft.gloss,
-              explanation: draft.explanation,
-              contextText: draft.source,
-              quizPrompt: draft.quiz,
-              quizAnswer: draft.target,
-              tags: draft.tags
-                .split(',')
-                .map((value) => value.trim())
-                .filter(Boolean)
-            })
-            setIsEditing(false)
-          }}
+          disabled={!isEditing || props.deleted}
+          onClick={saveDraft}
         >
           Save
         </button>

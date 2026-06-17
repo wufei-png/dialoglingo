@@ -40,7 +40,11 @@ function AppSurface() {
           />
         ) : (
           <WorkbookPage
-            {...sharedPageProps}
+            activeSection={activeSection}
+            onChangeSection={setActiveSection}
+            splitRatio={layoutSettings.splitRatio}
+            onSplitRatioChange={layoutSettings.setSplitRatio}
+            onSplitRatioCommit={layoutSettings.saveSplitRatio}
             jobId={activeJobId}
             workbookId={activeWorkbookId}
           />

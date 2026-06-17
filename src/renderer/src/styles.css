@@ -1066,10 +1066,15 @@ button {
 
 .workbook-left-pane,
 .workbook-right-pane {
-  display: flex;
+  display: grid;
   min-height: calc(100vh - 32px);
-  flex-direction: column;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
+  overflow: hidden;
+}
+
+.workbook-left-pane {
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .workbook-toolbar {
@@ -1093,18 +1098,47 @@ button {
 }
 
 .workbook-stream {
+  display: grid;
+  align-content: start;
+  gap: 12px;
   min-height: 0;
   max-height: none;
-  flex: 1;
+  overflow: auto;
+  padding-bottom: 24px;
+  padding-right: 2px;
+}
+
+.workbook-card {
+  margin-bottom: 0;
+}
+
+.workbook-card input[readonly],
+.workbook-card textarea[readonly] {
+  color: #4b5563;
+  background: rgba(249, 250, 251, 0.92);
+}
+
+.workbook-card input:not([readonly]),
+.workbook-card textarea:not([readonly]) {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.08);
+}
+
+.workbook-card-actions {
+  position: static;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.workbook-card-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .workbook-empty-state,
 .workbook-progress-state {
+  grid-row: 2 / 4;
   flex: 1;
-}
-
-.pane-utility-footer {
-  margin-top: auto;
 }
 
 .workbook-right-header {
@@ -1136,6 +1170,10 @@ button {
   display: grid;
   place-items: center;
   color: #6b7280;
+}
+
+.source-panel article {
+  white-space: pre-wrap;
 }
 
 .settings-sheet {
