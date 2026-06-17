@@ -113,15 +113,26 @@ DialogLingo has two top-level sections only:
 ### 2026-06-16 UI repair implementation notes
 
 The current implementation intentionally differs from a few earlier layout notes in this spec.
-Use these notes as the latest UI contract when maintaining the renderer:
+Use these notes as current implementation context when maintaining the renderer; items called out as open questions in the 2026-06-17 snapshot still need product discussion.
 
 - The section switcher is not a permanent app-wide left sidebar. `Search & Select` and `Workbook` tabs live inside the left pane header and stop at the pane divider.
 - The launch intro copy `Local chat to workbook` appears only on the scan/loading screen. It should not reserve space in the main Search or Workbook surfaces.
 - Search and Workbook both use the same persisted split-pane ratio. The default is compact left / wide right, `1:4` (`ui.splitRatio = 0.2`), with a draggable divider on both sections.
 - Settings is a compact utility reachable from the bottom of the left pane. Its layout control resets the shared split ratio back to `1:4`.
-- The Workbook section is now a persistent two-pane review surface: left card stream and left-local tabs, right source/provenance plus export action. Do not revert to a global toolbar that crosses the right pane.
+- The current Workbook section is a persistent two-pane review surface: left card stream and left-local tabs, right source/provenance plus export action. Do not revert to a global toolbar that crosses the right pane without an explicit layout decision.
 - Search session navigation rows show titles only. Preview/snippet content belongs in the main preview pane, not in the navigation list.
 - Platform filtering is a live data filter. Toggling platform checkboxes updates the rendered session groups and removes hidden sessions from the selected set.
+
+### 2026-06-17 Current implementation snapshot and known gaps
+
+Use this section to orient maintenance against the current code. It does not close product questions that still need explicit design discussion.
+
+- Workbook layout is still an open product decision. The current code uses a persistent draggable two-pane review surface with the card stream on the left and source/provenance plus export on the right. The older on-demand provenance-panel design, the current code shape, and possible third alternatives still need to be compared before treating one as the final product contract.
+- TODO: Workbook keyboard flow is not fully implemented. Current cards support explicit `Edit`, `Save`, `Cancel`, `Delete`, `Restore`, `Revert`, and `View source`; `Cmd/Ctrl+Enter` and `Esc` only operate inside the edited target field. `Enter` to edit, save-and-advance, `j/k`, arrow-key selection, and card-level `Delete/Backspace` remain planned interactions.
+- Search preview follows the current code contract: session navigation rows are title-only, while snippets/highlights belong in the focused preview pane. Empty search should not render transcript literal `<mark>` text as a highlight; preview highlighting is active only when the query is non-empty.
+- TODO: Workbook source/provenance is intentionally thin right now. `SourcePanel` shows the selected item type and source refs/excerpts, but source platform, project/workspace, timestamp, normalized snippet highlighting, raw fallback controls, and real `Prev / Next` match navigation are still planned work.
+- Generation docs should describe the current model layer as OpenAI-compatible API plus explicit CLI backends and mock LLM mode. Older references to a dedicated `litellmClient.ts` are historical; LiteLLM remains usable as an OpenAI-compatible local gateway, not as a special provider-router surface.
+- Database docs should be checked against `src/main/db/schema.ts` and migrations before DB work. Current code includes fields/tables such as `sessions.search_text`, `sessions.is_archived`, `workbook_items.source_refs_json`, `candidate_groups`, `enrichment_batches`, and `ranked_orders` that older prose may omit.
 
 ### Search & Select
 
@@ -199,17 +210,14 @@ v1 should support:
 
 Default behavior should search both indexed session metadata and indexed transcript content.
 
-The UI should use FTS-backed snippets/highlights in:
-
-- session-row previews
-- the focused session preview pane
+The UI should use FTS-backed snippets/highlights in the focused session preview pane. Session navigation rows remain title-only so preview/snippet content does not crowd the browsing rail.
 
 Search is against the local index only. The preview pane displays the result context; it is not its own search target.
 
 When search is active:
 
 - matching groups auto-expand
-- matching sessions surface FTS snippets in the session tree
+- matching sessions surface through the filtered/grouped session tree, while snippet detail stays in the focused preview pane
 - the preview pane auto-scrolls to the first visible match
 - if the first match is inside a collapsed code/log block, that local block expands before scrolling
 
