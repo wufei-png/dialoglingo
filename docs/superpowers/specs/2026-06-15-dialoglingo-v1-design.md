@@ -132,8 +132,8 @@ Use this section to orient maintenance against the current code. It does not clo
 - Search preview follows the current code contract: session navigation rows are title-only, while snippets/highlights belong in the focused preview pane. Empty search should not render transcript literal `<mark>` text as a highlight; preview highlighting is active only when the query is non-empty.
 - Workbook source/provenance is no longer just a placeholder. `SourcePanel` shows source platform, project/workspace, timestamp, source-span/text-match status, source-ref navigation, normalized highlighting, and `Prev / Next` match navigation. Optional raw excerpt fallback controls are still planned work.
 - Generation docs should describe the current model layer as OpenAI-compatible API plus explicit CLI backends and mock LLM mode. Older references to a dedicated `litellmClient.ts` are historical; LiteLLM remains usable as an OpenAI-compatible local gateway, not as a special provider-router surface.
-- Current generation pre-clean uses persisted and heuristic tool-noise signals, redacts obvious API-key-like secrets, drops pure tool/code/log/path/error noise, and strips noisy blocks from otherwise useful natural-language turns before model prompting. Search indexing still keeps raw transcript text; search preview code/log collapse remains follow-up work.
-- Current candidate mining splits cleaned natural-language turns into local candidate excerpts, filters trivial/pure fragment/noisy/near-duplicate candidates, and applies `maxItemsPerSession` after filtering. Durable `candidate_groups` persistence is still planned work.
+- Current generation pre-clean uses persisted and heuristic tool-noise signals, redacts obvious API-key-like secrets, drops pure tool/code/log/path/error noise, and strips noisy blocks from otherwise useful natural-language turns before model prompting. Search indexing still keeps raw transcript text; search preview code/log collapse remains follow-up work. See [generation pre-clean and candidate mining](../../architecture/2026-06-18-generation-preclean-candidate-mining.md).
+- Current candidate mining splits cleaned natural-language turns into local candidate excerpts, filters trivial/pure fragment/noisy/near-duplicate candidates, and applies `maxItemsPerSession` after filtering. Durable `candidate_groups` persistence is still planned work. Pipeline diagram and module map: [generation pre-clean and candidate mining](../../architecture/2026-06-18-generation-preclean-candidate-mining.md).
 - Current generation post-processing performs exact normalized dedup, conservative near-duplicate source-text merging, trivial expression filtering, in-memory heuristic base ranking, and type-balance rerank before workbook materialization. Durable `ranked_orders` checkpoint persistence is still planned work.
 - Database docs should be checked against `src/main/db/schema.ts` and migrations before DB work. Current code includes fields/tables such as `sessions.search_text`, `sessions.is_archived`, `workbook_items.source_refs_json`, `candidate_groups`, `enrichment_batches`, and `ranked_orders` that older prose may omit.
 
@@ -650,11 +650,13 @@ Every generation stage runs as a background job, not in the renderer and not as 
    - remove tool noise
    - trim oversized code/log blobs
    - preserve useful mixed-language natural-language turns
+   - see [generation pre-clean and candidate mining](../../architecture/2026-06-18-generation-preclean-candidate-mining.md)
    - execute as a background job
 5. `candidate mining`
    - local heuristics first
    - current implementation uses pre-cleaned natural-language excerpts instead of sending every non-empty turn to the model
    - current implementation removes pure URL/path/hash/shell fragments, obvious code/log/tool output, short trivial text, and conservative local near-duplicates before applying the per-session candidate cap
+   - see [generation pre-clean and candidate mining](../../architecture/2026-06-18-generation-preclean-candidate-mining.md)
    - execute as a background job
 6. `LLM enrichment`
    - small bounded batches only
@@ -721,15 +723,32 @@ This allows retry or resume from the last completed checkpoint instead of restar
 
 ### Candidate mining
 
-Use local heuristics before the model:
+Use local heuristics before the model. The current implementation is documented in [generation pre-clean and candidate mining](../../architecture/2026-06-18-generation-preclean-candidate-mining.md).
 
-- language detection
-- phrase extraction
-- frequency detection
-- code-term filtering
-- near-duplicate removal
+At a high level:
 
-The model should enrich candidate groups, not discover everything from scratch over raw transcripts.
+- `precleanTurns` removes pure-noise turns and strips code/log/path/shell lines from mixed natural-language turns.
+- `mineCandidateGroups` segments surviving text, filters trivial or fragment-only excerpts, deduplicates conservative near-matches, ranks candidates, then applies `maxItemsPerSession`.
+- The model enriches candidate groups; it should not rediscover everything from raw transcripts.
+
+```mermaid
+flowchart TD
+  A[原始 turn] --> B[precleanTurns]
+  B --> C{isTurnToolNoise?}
+  C -->|是| D[丢弃整 turn]
+  C -->|否| E[cleanNaturalLanguageText]
+  E --> F{清洗后仍噪声/空?}
+  F -->|是| D
+  F -->|否| G[mineCandidateGroups]
+  G --> H[再 clean + 分段]
+  H --> I[长度/片段/噪声过滤]
+  I --> J[指纹去重]
+  J --> K[启发式打分排序]
+  K --> L[maxItemsPerSession cap]
+  L --> M[LLM enrichment]
+```
+
+Historical note: older plan prose mentioned language detection, phrase extraction, and frequency detection. v1 instead uses the conservative regex/heuristic pipeline above.
 
 ## Ranking Strategy
 
