@@ -1,8 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import type { NavSectionId } from '../../../../shared/navigation'
 import { ResizableSplitPane } from '../../components/ResizableSplitPane'
-import { SectionTabs } from '../../components/SectionTabs'
 import { trpc } from '../../lib/trpc'
 import { useJobSubscription } from '../../lib/useJobSubscription'
 import { CardStream } from './CardStream'
@@ -65,8 +63,6 @@ function isTextEditingTarget(target: EventTarget | null) {
   )
 }
 export function WorkbookPage(props: {
-  activeSection: NavSectionId
-  onChangeSection: (section: NavSectionId) => void
   workbookSplitRatio: number
   workbookSourcePinned: boolean
   onWorkbookSplitRatioChange: (ratio: number) => void
@@ -326,10 +322,6 @@ export function WorkbookPage(props: {
 
   const workbookSurface = (
     <section className="workbook-main-pane">
-      <SectionTabs
-        activeSection={props.activeSection}
-        onChangeSection={props.onChangeSection}
-      />
       {hasNoWorkbook ? (
         <div className="boot-card workbook-empty-state">
           <p className="boot-eyebrow">Workbook</p>

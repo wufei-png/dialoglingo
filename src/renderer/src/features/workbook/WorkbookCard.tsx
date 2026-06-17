@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { MeasuredCollapse } from '../../components/MeasuredCollapse'
 
 type WorkbookSnapshotDraft = {
   sourceText: string
@@ -77,6 +78,7 @@ function hasDraftChanged(draft: ReturnType<typeof toDraft>, props: Props) {
   )
 }
 export function WorkbookCard(props: Props) {
+  const secondaryFieldsId = useId()
   const targetRef = useRef<HTMLInputElement | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState(toDraft(props))
@@ -147,7 +149,28 @@ export function WorkbookCard(props: Props) {
     >
       <div className="workbook-card-header">
         <div>
-          <span className="workbook-card-kicker">{props.itemType}</span>
+          <div className="workbook-card-title-row">
+            <span className="workbook-card-kicker">{props.itemType}</span>
+            <div className="workbook-card-actions">
+              {props.modified ? (
+                <button type="button" onClick={props.onRevert}>
+                  Revert
+                </button>
+              ) : null}
+              <button type="button" onClick={props.onOpenSource}>
+                View source
+              </button>
+              {props.deleted ? (
+                <button type="button" onClick={props.onRestore}>
+                  Restore
+                </button>
+              ) : (
+                <button type="button" onClick={props.onDelete}>
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
           <p className="workbook-card-source">{draft.source}</p>
         </div>
         <div className="workbook-card-status">
@@ -183,81 +206,74 @@ export function WorkbookCard(props: Props) {
         />
       </label>
 
-      {expanded ? (
-        <div className="workbook-card-secondary">
-          <label className="workbook-field">
-            <span>Explanation</span>
-            <textarea
-              value={draft.explanation}
-              readOnly={props.deleted}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, explanation: event.target.value }))
-              }
-              onBlur={() => void saveDraft(false)}
-              onKeyDown={handleEditableKeyDown}
-            />
-          </label>
-          <label className="workbook-field">
-            <span>Quiz</span>
-            <textarea
-              value={draft.quiz}
-              readOnly={props.deleted}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, quiz: event.target.value }))
-              }
-              onBlur={() => void saveDraft(false)}
-              onKeyDown={handleEditableKeyDown}
-            />
-          </label>
-          <label className="workbook-field">
-            <span>Quiz answer</span>
-            <input
-              value={draft.quizAnswer}
-              readOnly={props.deleted}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, quizAnswer: event.target.value }))
-              }
-              onBlur={() => void saveDraft(false)}
-              onKeyDown={handleEditableKeyDown}
-            />
-          </label>
-          <label className="workbook-field">
-            <span>Tags</span>
-            <input
-              value={draft.tags}
-              readOnly={props.deleted}
-              onChange={(event) =>
-                setDraft((current) => ({ ...current, tags: event.target.value }))
-              }
-              onBlur={() => void saveDraft(false)}
-              onKeyDown={handleEditableKeyDown}
-            />
-          </label>
-        </div>
-      ) : null}
+      <button
+        type="button"
+        className="workbook-disclosure-row"
+        aria-label={expanded ? 'Hide additional workbook fields' : 'Show additional workbook fields'}
+        aria-expanded={expanded}
+        aria-controls={secondaryFieldsId}
+        onClick={() => setExpanded((current) => !current)}
+      >
+        <span className="workbook-disclosure-icon" aria-hidden="true">
+          &gt;
+        </span>
+      </button>
 
-      <div className="workbook-card-actions">
-        <button type="button" onClick={() => setExpanded((current) => !current)}>
-          {expanded ? 'Less fields' : 'More fields'}
-        </button>
-        {props.modified ? (
-          <button type="button" onClick={props.onRevert}>
-            Revert
-          </button>
-        ) : null}
-        <button type="button" onClick={props.onOpenSource}>
-          View source
-        </button>
-        {props.deleted ? (
-          <button type="button" onClick={props.onRestore}>
-            Restore
-          </button>
-        ) : (
-          <button type="button" onClick={props.onDelete}>
-            Delete
-          </button>
-        )}
-      </div>
+      <MeasuredCollapse
+        id={secondaryFieldsId}
+        className="workbook-card-secondary"
+        exitDurationMs={190}
+        open={expanded}
+      >
+        <label className="workbook-field">
+          <span>Explanation</span>
+          <textarea
+            value={draft.explanation}
+            readOnly={props.deleted}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, explanation: event.target.value }))
+            }
+            onBlur={() => void saveDraft(false)}
+            onKeyDown={handleEditableKeyDown}
+          />
+        </label>
+        <label className="workbook-field">
+          <span>Quiz</span>
+          <textarea
+            value={draft.quiz}
+            readOnly={props.deleted}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, quiz: event.target.value }))
+            }
+            onBlur={() => void saveDraft(false)}
+            onKeyDown={handleEditableKeyDown}
+          />
+        </label>
+        <label className="workbook-field">
+          <span>Quiz answer</span>
+          <input
+            value={draft.quizAnswer}
+            readOnly={props.deleted}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, quizAnswer: event.target.value }))
+            }
+            onBlur={() => void saveDraft(false)}
+            onKeyDown={handleEditableKeyDown}
+          />
+        </label>
+        <label className="workbook-field">
+          <span>Tags</span>
+          <input
+            value={draft.tags}
+            readOnly={props.deleted}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, tags: event.target.value }))
+            }
+            onBlur={() => void saveDraft(false)}
+            onKeyDown={handleEditableKeyDown}
+          />
+        </label>
+      </MeasuredCollapse>
     </article>
   )
 }

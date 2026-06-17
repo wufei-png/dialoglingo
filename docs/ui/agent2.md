@@ -1,0 +1,2 @@
+设计判断：当前 Workbook 不是最优形态。代码现在是常驻右侧 Source split pane，而且进入后会自动选中第一张卡，所以右侧默认就显示内容；但较新的 v1 spec 明确把 Workbook layout 标为 open decision，并写了 provenance 应该是 on-demand right-side panel，不是默认永久 40% 右栏。docs/ui/2026-06-16-workbook-ui-design.md 里的 60/40 常驻右栏更像较早方案，不应直接当最终契约。
+我建议 v1 改成：单主区 review queue + sticky toolbar + 紧凑/虚拟化卡片流 + 右侧按需 inspector/drawer。卡片默认只展示核心判断信息，选中或点 Edit 时再展开编辑字段；View source 打开右侧 provenance，打开后切换卡片同步更新。这样比现在“每张卡六个字段一路下拉”的表单感更现代，也更符合这个产品“快速清洗后导出 Anki”的目标。

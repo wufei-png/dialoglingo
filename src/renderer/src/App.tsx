@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import type { NavSectionId } from '../../shared/navigation'
 import { useLayoutSettings } from './app/useLayoutSettings'
+import { SectionTabs } from './components/SectionTabs'
 import { SettingsSheet } from './components/SettingsSheet'
 import { LaunchScanScreen } from './features/boot/LaunchScanScreen'
 import { SearchPage } from './features/search/SearchPage'
@@ -18,8 +19,6 @@ function AppSurface() {
   const layoutSettings = useLayoutSettings()
 
   const sharedPageProps = {
-    activeSection,
-    onChangeSection: setActiveSection,
     splitRatio: layoutSettings.splitRatio,
     onSplitRatioChange: layoutSettings.setSplitRatio,
     onSplitRatioCommit: layoutSettings.saveSplitRatio,
@@ -29,6 +28,12 @@ function AppSurface() {
   return (
     <div className="app-shell">
       <main className="app-content">
+        <div className="page-section-tabs">
+          <SectionTabs
+            activeSection={activeSection}
+            onChangeSection={setActiveSection}
+          />
+        </div>
         {activeSection === 'search' ? (
           <SearchPage
             {...sharedPageProps}
@@ -40,8 +45,6 @@ function AppSurface() {
           />
         ) : (
           <WorkbookPage
-            activeSection={activeSection}
-            onChangeSection={setActiveSection}
             workbookSplitRatio={layoutSettings.workbookSplitRatio}
             workbookSourcePinned={layoutSettings.workbookSourcePinned}
             onWorkbookSplitRatioChange={layoutSettings.setWorkbookSplitRatio}

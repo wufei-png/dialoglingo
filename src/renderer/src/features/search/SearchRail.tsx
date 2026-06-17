@@ -1,7 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import type { NavSectionId } from '../../../../shared/navigation'
-import { SectionTabs } from '../../components/SectionTabs'
+import { MeasuredCollapse } from '../../components/MeasuredCollapse'
 import { GenerateWorkbookSheet } from './GenerateWorkbookSheet'
 import {
   PLATFORM_LABELS,
@@ -57,27 +55,14 @@ function CollapsibleFilterSection(props: {
         </span>
         <span className="collapsible-section-summary">{props.summary}</span>
       </button>
-      <AnimatePresence initial={false}>
-        {expanded ? (
-          <motion.div
-            id={bodyId}
-            className="collapsible-section-body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.14, ease: 'easeOut' }}
-          >
-            <div className="collapsible-section-content">{props.children}</div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <MeasuredCollapse id={bodyId} className="collapsible-section-body" open={expanded}>
+        <div className="collapsible-section-content">{props.children}</div>
+      </MeasuredCollapse>
     </section>
   )
 }
 
 export function SearchRail(props: {
-  activeSection: NavSectionId
-  onChangeSection: (section: NavSectionId) => void
   onOpenSettings: () => void
   sessions: SearchSession[]
   projects: ProjectOption[]
@@ -157,10 +142,6 @@ export function SearchRail(props: {
 
   return (
     <aside className="search-rail">
-      <SectionTabs
-        activeSection={props.activeSection}
-        onChangeSection={props.onChangeSection}
-      />
       <div className="search-stack">
         <section className="filter-area" aria-label="Filter area">
           <div className="filter-area-label">Filter area</div>

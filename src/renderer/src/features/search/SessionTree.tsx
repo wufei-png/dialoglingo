@@ -37,7 +37,8 @@ export function SessionTree(props: {
   const virtualizer = useVirtualizer({
     count: virtualRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: (index) => (virtualRows[index]?.kind === 'group' ? 42 : 38),
+    estimateSize: (index) => (virtualRows[index]?.kind === 'group' ? 42 : 48),
+    getItemKey: (index) => virtualRows[index]?.id ?? index,
     overscan: 8
   })
 
@@ -81,10 +82,10 @@ export function SessionTree(props: {
           if (item.kind === 'group') {
             return (
               <div
-                key={item.id}
+                key={virtualItem.key}
                 ref={virtualizer.measureElement}
                 data-index={virtualItem.index}
-                className="session-tree-virtual-row"
+                className="session-tree-virtual-row is-group"
                 style={{ transform: `translateY(${virtualItem.start}px)` }}
               >
                 <button
@@ -116,10 +117,10 @@ export function SessionTree(props: {
 
           return (
             <div
-              key={item.id}
+              key={virtualItem.key}
               ref={virtualizer.measureElement}
               data-index={virtualItem.index}
-              className="session-tree-virtual-row"
+              className="session-tree-virtual-row is-session"
               style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
               <div className="session-row">

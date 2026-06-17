@@ -1600,3 +1600,364 @@ button {
 .source-panel .preview-bubble {
   max-width: min(960px, 96%);
 }
+
+:root {
+  --control-bg: #e5e7eb;
+  --control-bg-hover: rgba(209, 213, 219, 0.92);
+  --control-bg-active-hover: rgba(191, 198, 208, 0.96);
+  --control-fg: #111827;
+  --control-transition: 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.section-tab,
+.search-toolbar button,
+.search-footer-actions button,
+.settings-utility-button,
+.pane-utility-footer button,
+.match-nav button,
+.sheet-actions button,
+.session-group-context-menu button,
+.session-row-button,
+.group-by-option,
+.session-group-header,
+.collapsible-section-header,
+.workbook-tabs button,
+.workbook-toolbar > button,
+.workbook-card-actions button,
+.source-panel-actions button,
+.workbook-right-header button,
+.workbook-disclosure-row {
+  cursor: pointer;
+  transition:
+    background var(--control-transition),
+    color var(--control-transition),
+    box-shadow var(--control-transition),
+    transform var(--control-transition);
+}
+
+.section-tab:not(.is-active),
+.search-toolbar button,
+.search-footer-actions button,
+.settings-utility-button,
+.pane-utility-footer button,
+.match-nav button,
+.sheet-actions button,
+.session-group-context-menu button,
+.group-by-option,
+.workbook-tabs button,
+.workbook-toolbar > button,
+.workbook-card-actions button,
+.source-panel-actions button,
+.workbook-right-header button,
+.workbook-disclosure-row {
+  color: var(--control-fg);
+}
+
+.section-tab:not(.is-active),
+.search-toolbar button,
+.search-footer-actions button,
+.settings-utility-button,
+.pane-utility-footer button,
+.match-nav button,
+.sheet-actions button,
+.session-group-context-menu button,
+.group-by-option,
+.workbook-tabs button,
+.workbook-toolbar > button,
+.workbook-card-actions button,
+.source-panel-actions button,
+.workbook-right-header button {
+  background: var(--control-bg);
+}
+
+.section-tab:not(.is-active):hover,
+.search-toolbar button:not(:disabled):hover,
+.search-footer-actions button:not(:disabled):hover,
+.settings-utility-button:not(:disabled):hover,
+.pane-utility-footer button:not(:disabled):hover,
+.match-nav button:not(:disabled):hover,
+.sheet-actions button:not(:disabled):hover,
+.session-group-context-menu button:not(:disabled):hover,
+.session-row-button:hover,
+.group-by-option:not(.is-active):hover,
+.session-group-header:hover,
+.collapsible-section-header:hover,
+.workbook-tabs button:not([aria-pressed='true']):hover,
+.workbook-toolbar > button:not(:disabled):hover,
+.workbook-card-actions button:not(:disabled):hover,
+.source-panel-actions button:not(:disabled):hover,
+.workbook-right-header button:not(:disabled):hover,
+.search-filters label:hover {
+  background: var(--control-bg-hover);
+}
+
+.workbook-disclosure-row:hover,
+.workbook-disclosure-row:focus-visible,
+.workbook-disclosure-row[aria-expanded='true'] {
+  background: var(--control-bg-hover);
+}
+
+.section-tab.is-active:hover {
+  background: #1f2937;
+}
+
+.group-by-option.is-active:hover {
+  background: var(--control-bg-active-hover);
+}
+
+.workbook-tabs button[aria-pressed='true'] {
+  background: #111827;
+  color: #fff;
+}
+
+.workbook-tabs button[aria-pressed='true']:hover {
+  background: #1f2937;
+  color: #fff;
+}
+
+.search-toolbar button:disabled,
+.search-footer-actions button:disabled,
+.sheet-actions button:disabled,
+.workbook-toolbar > button:disabled,
+.workbook-card-actions button:disabled,
+.source-panel-actions button:disabled,
+.workbook-right-header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.search-toolbar button:disabled:hover,
+.search-footer-actions button:disabled:hover,
+.sheet-actions button:disabled:hover,
+.workbook-toolbar > button:disabled:hover,
+.workbook-card-actions button:disabled:hover,
+.source-panel-actions button:disabled:hover,
+.workbook-right-header button:disabled:hover {
+  background: var(--control-bg);
+  transform: none;
+}
+
+.collapsible-caret,
+.workbook-disclosure-icon {
+  transition: transform var(--control-transition);
+}
+
+.session-group {
+  display: grid;
+  gap: 0;
+}
+
+.session-group-body,
+.workbook-card-secondary {
+  overflow: hidden;
+}
+
+.session-group-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-top: 6px;
+  padding-left: 0;
+}
+
+.session-tree {
+  display: block;
+  position: relative;
+  height: 100%;
+  min-height: 180px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.session-tree-virtual {
+  position: relative;
+  width: 100%;
+}
+
+.session-tree-virtual-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  will-change: transform;
+}
+
+.session-tree-virtual-row.is-group {
+  padding-bottom: 4px;
+}
+
+.session-tree-virtual-row.is-session .session-row {
+  animation: session-row-reveal 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes session-row-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workbook-card {
+  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+  box-shadow:
+    0 12px 32px rgba(17, 24, 39, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -1px 0 rgba(17, 24, 39, 0.04);
+}
+
+.workbook-card.is-selected {
+  outline: 0;
+  box-shadow:
+    0 0 0 2px #f59e0b,
+    0 12px 32px rgba(17, 24, 39, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -1px 0 rgba(17, 24, 39, 0.04);
+}
+
+.workbook-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-start;
+}
+
+.workbook-card-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.workbook-card-actions {
+  display: flex;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 0;
+}
+
+.workbook-card-actions button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.workbook-card-status {
+  min-width: 0;
+}
+
+.workbook-disclosure-row {
+  display: flex;
+  width: 26px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.workbook-disclosure-icon {
+  display: inline-block;
+  transform: rotate(0deg);
+}
+
+.workbook-disclosure-row[aria-expanded='true'] .workbook-disclosure-icon {
+  transform: rotate(90deg);
+}
+
+.workbook-card-secondary {
+  display: grid;
+  gap: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-tab,
+  .search-toolbar button,
+  .search-footer-actions button,
+  .settings-utility-button,
+  .pane-utility-footer button,
+  .match-nav button,
+  .sheet-actions button,
+  .session-group-context-menu button,
+  .session-row-button,
+  .group-by-option,
+  .session-group-header,
+  .collapsible-section-header,
+  .workbook-tabs button,
+  .workbook-toolbar > button,
+  .workbook-card-actions button,
+  .source-panel-actions button,
+  .workbook-right-header button,
+  .workbook-disclosure-row,
+  .collapsible-caret,
+  .workbook-disclosure-icon {
+    transition-duration: 1ms;
+  }
+}
+
+:root {
+  --section-tabs-height: 46px;
+  --section-tabs-gap: 12px;
+}
+
+.app-content {
+  position: relative;
+}
+
+.page-section-tabs {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  width: max-content;
+  height: var(--section-tabs-height);
+}
+
+.page-section-tabs .section-tabs {
+  height: 100%;
+}
+
+.page-section-tabs .section-tab {
+  display: inline-flex;
+  min-width: 118px;
+  height: var(--section-tabs-height);
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.page-section-tabs .section-tab:first-child {
+  min-width: 148px;
+}
+
+.search-rail {
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding-top: calc(14px + var(--section-tabs-height) + var(--section-tabs-gap));
+}
+
+.workbook-main-pane {
+  grid-template-rows: auto minmax(0, 1fr);
+  padding-top: calc(var(--section-tabs-height) + var(--section-tabs-gap));
+}
+
+.workbook-empty-state,
+.workbook-progress-state {
+  grid-row: 1 / 3;
+}

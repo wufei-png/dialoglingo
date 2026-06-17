@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { NavSectionId } from '../../../../shared/navigation'
 import { ResizableSplitPane } from '../../components/ResizableSplitPane'
 import { trpc } from '../../lib/trpc'
 import {
@@ -66,8 +65,6 @@ function getVisiblePreviewText(preview: SessionPreview | null, fallbackPreview: 
 }
 
 export function SearchPage(props: {
-  activeSection: NavSectionId
-  onChangeSection: (section: NavSectionId) => void
   splitRatio: number
   onSplitRatioChange: (ratio: number) => void
   onSplitRatioCommit: (ratio: number) => void
@@ -287,8 +284,6 @@ export function SearchPage(props: {
       onRatioCommit={props.onSplitRatioCommit}
       left={(
         <SearchRail
-          activeSection={props.activeSection}
-          onChangeSection={props.onChangeSection}
           onOpenSettings={props.onOpenSettings}
           sessions={sessions}
           projects={projects}
