@@ -2,6 +2,7 @@ import {
   DEFAULT_MODEL_BACKEND,
   type Settings
 } from '../../shared/schemas/settings'
+import { isMockLlmEnabled } from './mockLlm'
 
 export function validateGenerationRequest(input: {
   sessionIds: string[]
@@ -12,6 +13,10 @@ export function validateGenerationRequest(input: {
 }) {
   if (input.sessionIds.length === 0) {
     throw new Error('Select at least one session before generating.')
+  }
+
+  if (isMockLlmEnabled()) {
+    return
   }
 
   const backendKind = input.settings.modelBackend?.kind ?? DEFAULT_MODEL_BACKEND.kind

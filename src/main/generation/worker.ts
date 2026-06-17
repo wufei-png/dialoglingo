@@ -3,6 +3,7 @@ import type { Settings } from '../../shared/schemas/settings'
 import { mineCandidateGroups } from './candidates'
 import { enrichCandidateBatch } from './enrichCandidateBatch'
 import { ModelAdapterError, type LearningItemDraft } from './modelAdapter'
+import { createMockLearningItemDrafts, isMockLlmEnabled } from './mockLlm'
 import { precleanTurns } from './preclean'
 
 type WorkerTurn = {
@@ -119,7 +120,127 @@ function toWorkerItem(input: {
   }
 }
 
+function mockSourceForSession(input: {
+  session: WorkerSession
+  itemIndex: number
+}): { sourceSpanRef: string; excerpt: string } {
+  const turn = input.session.turns[input.itemIndex % Math.max(input.session.turns.length, 1)]
+  return {
+    sourceSpanRef: turn?.sourceSpanRef ?? `mock-source-${input.itemIndex + 1}`,
+    excerpt:
+      turn?.text ??
+      'Mock DialogLingo generation source. Select this card to inspect provenance.'
+  }
+}
+
+function emitTerminalPhases(input: {
+  jobId: string
+  totalSelectedSessionCount: number
+  createdItemCount: number
+  failedBatchCount: number
+}) {
+  emit({
+    kind: 'phase',
+    jobId: input.jobId,
+    status: 'ranking',
+    totalSelectedSessionCount: input.totalSelectedSessionCount,
+    processedSessionCount: input.totalSelectedSessionCount,
+    createdItemCount: input.createdItemCount,
+    warningCount: 0,
+    failureCount: input.failedBatchCount,
+    currentSessionTitle: null,
+    currentBatchLabel: 'type-balance rerank'
+  })
+
+  emit({
+    kind: 'phase',
+    jobId: input.jobId,
+    status: 'materializing',
+    totalSelectedSessionCount: input.totalSelectedSessionCount,
+    processedSessionCount: input.totalSelectedSessionCount,
+    createdItemCount: input.createdItemCount,
+    warningCount: 0,
+    failureCount: input.failedBatchCount,
+    currentSessionTitle: null,
+    currentBatchLabel: 'write workbook items'
+  })
+}
+
+async function runMockStart(message: StartMessage) {
+  const session =
+    message.sessions[0] ??
+    ({
+      sessionId: 'mock-session',
+      title: 'Mock generation',
+      turns: []
+    } satisfies WorkerSession)
+  const drafts = createMockLearningItemDrafts()
+  const items = drafts.map((draft, itemIndex) => {
+    const source = mockSourceForSession({ session, itemIndex })
+    return toWorkerItem({
+      jobId: message.jobId,
+      session,
+      draft,
+      itemIndex: itemIndex + 1,
+      sourceSpanRef: source.sourceSpanRef,
+      excerpt: source.excerpt
+    })
+  })
+
+  emit({
+    kind: 'phase',
+    jobId: message.jobId,
+    status: 'normalizing',
+    totalSelectedSessionCount: message.sessions.length,
+    processedSessionCount: 0,
+    createdItemCount: 0,
+    warningCount: 0,
+    failureCount: 0,
+    currentSessionTitle: session.title,
+    currentBatchLabel: 'mock llm'
+  })
+
+  emit({
+    kind: 'phase',
+    jobId: message.jobId,
+    status: 'enriching',
+    totalSelectedSessionCount: message.sessions.length,
+    processedSessionCount: message.sessions.length,
+    createdItemCount: items.length,
+    warningCount: 0,
+    failureCount: 0,
+    currentSessionTitle: session.title,
+    currentBatchLabel: 'mock llm'
+  })
+
+  emitTerminalPhases({
+    jobId: message.jobId,
+    totalSelectedSessionCount: message.sessions.length,
+    createdItemCount: items.length,
+    failedBatchCount: 0
+  })
+
+  parentPort?.postMessage({
+    kind: 'completed',
+    jobId: message.jobId,
+    status: 'completed',
+    totalSelectedSessionCount: message.sessions.length,
+    processedSessionCount: message.sessions.length,
+    createdItemCount: items.length,
+    warningCount: 0,
+    failureCount: 0,
+    currentSessionTitle: null,
+    currentBatchLabel: null,
+    items
+  })
+}
+
 async function runStart(message: StartMessage) {
+  if (isMockLlmEnabled()) {
+    await runMockStart(message)
+    return
+  }
+
   const items: WorkerItem[] = []
   let failedBatchCount = 0
 
@@ -241,30 +362,11 @@ async function runStart(message: StartMessage) {
     }
   }
 
-  emit({
-    kind: 'phase',
+  emitTerminalPhases({
     jobId: message.jobId,
-    status: 'ranking',
     totalSelectedSessionCount: message.sessions.length,
-    processedSessionCount: message.sessions.length,
     createdItemCount: items.length,
-    warningCount: 0,
-    failureCount: failedBatchCount,
-    currentSessionTitle: null,
-    currentBatchLabel: 'type-balance rerank'
-  })
-
-  emit({
-    kind: 'phase',
-    jobId: message.jobId,
-    status: 'materializing',
-    totalSelectedSessionCount: message.sessions.length,
-    processedSessionCount: message.sessions.length,
-    createdItemCount: items.length,
-    warningCount: 0,
-    failureCount: failedBatchCount,
-    currentSessionTitle: null,
-    currentBatchLabel: 'write workbook items'
+    failedBatchCount
   })
 
   parentPort?.postMessage({

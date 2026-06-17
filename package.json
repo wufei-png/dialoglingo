@@ -13,6 +13,7 @@
     "prepare:native:electron": "node scripts/prepare-electron-better-sqlite3.mjs",
     "dev": "npm run prepare:native:electron && node scripts/run-electron-vite-dev.mjs",
     "dev:debug": "npm run prepare:native:electron && node scripts/run-electron-vite-dev.mjs --debug",
+    "dev:mock-llm": "npm run prepare:native:electron && node scripts/run-electron-vite-dev.mjs --mock-llm",
     "build": "npm run prepare:native:electron && electron-vite build",
     "preview": "electron-vite preview",
     "postinstall": "npm run rebuild:native:node && npm run capture:native:node",

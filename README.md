@@ -7,6 +7,16 @@ Initial scope:
 - Generate reviewable `Expression` and `Sentence` workbook items from mixed-language agent conversations.
 - Export study-ready material primarily to Anki, with text-bundle fallbacks for downstream tools.
 
+## Dev mock generation
+
+Use the mock LLM backend when you want to exercise the workbook UI without calling a remote API or local CLI subscription:
+
+```bash
+npm run dev:mock-llm
+```
+
+The equivalent flag form is `npm run dev -- --mock-llm`. Both set `DIALOGLINGO_MOCK_LLM=1` for the Electron main process.
+
 ## Native module ABI note
 
 `better-sqlite3` has separate Node and Electron ABI builds in this repo.
