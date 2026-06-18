@@ -1,5 +1,6 @@
 import { parentPort } from 'node:worker_threads'
 import type { Settings } from '../../shared/schemas/settings'
+import { logger } from '../logging'
 import { mineCandidateGroups } from './candidates'
 import {
   type EnrichmentBatchRequestArtifact,
@@ -59,6 +60,33 @@ type StartMessage = {
 
 let cancelled = false
 
+logger.info('generation-worker', 'worker module loaded', {
+  pid: process.pid,
+  mock: isMockLlmEnabled()
+})
+
+function elapsedMs(startedAt: number) {
+  return Date.now() - startedAt
+}
+
+function summarizeWorkerSessions(sessions: WorkerSession[]) {
+  return sessions.reduce(
+    (summary, session) => {
+      summary.turnCount += session.turns.length
+      summary.textChars += session.turns.reduce(
+        (count, turn) => count + turn.text.length,
+        0
+      )
+      return summary
+    },
+    {
+      sessionCount: sessions.length,
+      turnCount: 0,
+      textChars: 0
+    }
+  )
+}
+
 function emit(input: {
   kind: 'snapshot' | 'phase' | 'warning' | 'failure' | 'completed'
   jobId: string
@@ -85,10 +113,27 @@ function emit(input: {
     | 'model-request-failure'
     | 'invalid-structured-payload'
 }) {
+  logger.debug('generation-worker', 'post job event to main', {
+    jobId: input.jobId,
+    kind: input.kind,
+    status: input.status,
+    processedSessionCount: input.processedSessionCount,
+    totalSelectedSessionCount: input.totalSelectedSessionCount,
+    currentBatchLabel: input.currentBatchLabel
+  })
   parentPort?.postMessage(input)
 }
 
 function emitCheckpoint(event: GenerationCheckpointEvent) {
+  logger.debug('generation-worker', 'post checkpoint to main', {
+    jobId: event.jobId,
+    checkpoint: event.checkpoint,
+    candidateCount:
+      'candidates' in event && Array.isArray(event.candidates)
+        ? event.candidates.length
+        : undefined,
+    batchIndex: 'batchIndex' in event ? event.batchIndex : undefined
+  })
   parentPort?.postMessage(event)
 }
 
@@ -318,6 +363,11 @@ function finalizeAndRankItems(items: WorkerItem[], generation: StartMessage['gen
 }
 
 async function runMockStart(message: StartMessage) {
+  const startedAt = Date.now()
+  logger.info('generation-worker', 'mock start begin', {
+    jobId: message.jobId,
+    ...summarizeWorkerSessions(message.sessions)
+  })
   const session =
     message.sessions[0] ??
     ({
@@ -352,6 +402,12 @@ async function runMockStart(message: StartMessage) {
     }),
     message.generation
   )
+  logger.info('generation-worker', 'mock drafts ready', {
+    jobId: message.jobId,
+    draftCount: drafts.length,
+    itemCount: items.length,
+    durationMs: elapsedMs(startedAt)
+  })
 
   emitCheckpoint({
     kind: 'checkpoint',
@@ -429,6 +485,11 @@ async function runMockStart(message: StartMessage) {
     currentBatchLabel: null,
     items
   })
+  logger.info('generation-worker', 'mock start complete', {
+    jobId: message.jobId,
+    itemCount: items.length,
+    durationMs: elapsedMs(startedAt)
+  })
 }
 
 async function runEnrichmentFromCandidates(input: {
@@ -439,6 +500,7 @@ async function runEnrichmentFromCandidates(input: {
   rankedOrderIds?: string[]
   sourceJobId?: string | null
 }) {
+  const startedAt = Date.now()
   const items: WorkerItem[] = []
   const completedByIndex = new Map(
     (input.completedBatches ?? []).map((batch) => [batch.batchIndex, batch])
@@ -453,8 +515,16 @@ async function runEnrichmentFromCandidates(input: {
       : input.candidates.length === 0
         ? 0
         : Math.ceil(input.candidates.length / batchSize)
+  logger.info('generation-worker', 'enrichment start', {
+    jobId: input.message.jobId,
+    candidateCount: input.candidates.length,
+    batchSize,
+    batchCount,
+    customPrompt: Boolean(input.customPrompt)
+  })
 
   for (let batchIndex = 0; batchIndex < batchCount; batchIndex += 1) {
+    const batchStartedAt = Date.now()
     const batchStart = batchIndex * batchSize
     const batch = input.candidates.slice(batchStart, batchStart + batchSize)
     const batchLabel = input.customPrompt
@@ -505,6 +575,13 @@ async function runEnrichmentFromCandidates(input: {
       currentSessionTitle: null,
       currentBatchLabel: batchLabel
     })
+    logger.info('generation-worker', 'enrichment batch start', {
+      jobId: input.message.jobId,
+      batchIndex,
+      batchSize: batch.length,
+      batchLabel,
+      promptChars: prompt.length
+    })
 
     const completed = completedByIndex.get(batchIndex)
     if (completed) {
@@ -526,6 +603,12 @@ async function runEnrichmentFromCandidates(input: {
           items: reusedItems,
           reusedFromJobId: input.sourceJobId ?? undefined
         }
+      })
+      logger.info('generation-worker', 'enrichment batch reused', {
+        jobId: input.message.jobId,
+        batchIndex,
+        itemCount: reusedItems.length,
+        durationMs: elapsedMs(batchStartedAt)
       })
       continue
     }
@@ -563,6 +646,12 @@ async function runEnrichmentFromCandidates(input: {
           items: batchItems
         }
       })
+      logger.info('generation-worker', 'enrichment batch complete', {
+        jobId: input.message.jobId,
+        batchIndex,
+        itemCount: batchItems.length,
+        durationMs: elapsedMs(batchStartedAt)
+      })
     } catch (error) {
       failedBatchCount += 1
       const reason =
@@ -597,10 +686,23 @@ async function runEnrichmentFromCandidates(input: {
         currentSessionTitle: null,
         currentBatchLabel: batchLabel
       })
+      logger.error('generation-worker', 'enrichment batch failed', {
+        jobId: input.message.jobId,
+        batchIndex,
+        reason,
+        message,
+        durationMs: elapsedMs(batchStartedAt)
+      })
       return
     }
   }
 
+  const rankingStartedAt = Date.now()
+  logger.info('generation-worker', 'ranking start', {
+    jobId: input.message.jobId,
+    itemCount: items.length,
+    rankedOrderIds: input.rankedOrderIds?.length ?? 0
+  })
   const completedItems = input.rankedOrderIds
     ? applyPersistedOrder({
         items,
@@ -615,6 +717,12 @@ async function runEnrichmentFromCandidates(input: {
         finalizeWorkbookItems(items),
         input.message.generation.typeBalanceProfile
       )
+  logger.info('generation-worker', 'ranking complete', {
+    jobId: input.message.jobId,
+    itemCount: completedItems.length,
+    durationMs: elapsedMs(rankingStartedAt),
+    elapsedSinceEnrichmentStartMs: elapsedMs(startedAt)
+  })
 
   emitCheckpoint({
     kind: 'checkpoint',
@@ -720,10 +828,16 @@ async function runStart(message: StartMessage) {
 }
 
 async function runFreshStart(message: StartMessage) {
+  const startedAt = Date.now()
+  logger.info('generation-worker', 'fresh start begin', {
+    jobId: message.jobId,
+    ...summarizeWorkerSessions(message.sessions)
+  })
   const promptCandidates: CandidateWithSession[] = []
 
   for (let index = 0; index < message.sessions.length; index += 1) {
     const session = message.sessions[index]
+    const sessionStartedAt = Date.now()
     if (cancelled) {
       parentPort?.postMessage({
         kind: 'snapshot',
@@ -752,6 +866,14 @@ async function runFreshStart(message: StartMessage) {
       failureCount: 0,
       currentSessionTitle: session.title,
       currentBatchLabel: null
+    })
+    logger.info('generation-worker', 'session normalizing start', {
+      jobId: message.jobId,
+      sessionIndex: index,
+      sessionId: session.sessionId,
+      title: session.title,
+      turnCount: session.turns.length,
+      textChars: session.turns.reduce((count, turn) => count + turn.text.length, 0)
     })
 
     const cleanedTurns = precleanTurns(session.turns)
@@ -785,6 +907,14 @@ async function runFreshStart(message: StartMessage) {
       currentSessionTitle: session.title,
       currentBatchLabel: `${candidates.length} candidates`
     })
+    logger.info('generation-worker', 'session mining complete', {
+      jobId: message.jobId,
+      sessionIndex: index,
+      sessionId: session.sessionId,
+      cleanedTurnCount: cleanedTurns.length,
+      candidateCount: candidates.length,
+      durationMs: elapsedMs(sessionStartedAt)
+    })
   }
 
   emitCheckpoint({
@@ -798,13 +928,25 @@ async function runFreshStart(message: StartMessage) {
     message,
     candidates: promptCandidates
   })
+  logger.info('generation-worker', 'fresh start complete', {
+    jobId: message.jobId,
+    candidateCount: promptCandidates.length,
+    durationMs: elapsedMs(startedAt)
+  })
 }
 
 async function runPromptOverrideStart(message: StartMessage, promptOverride: string) {
+  const startedAt = Date.now()
+  logger.info('generation-worker', 'prompt override start begin', {
+    jobId: message.jobId,
+    promptChars: promptOverride.length,
+    ...summarizeWorkerSessions(message.sessions)
+  })
   const promptCandidates: CandidateWithSession[] = []
 
   for (let index = 0; index < message.sessions.length; index += 1) {
     const session = message.sessions[index]
+    const sessionStartedAt = Date.now()
 
     if (cancelled) {
       parentPort?.postMessage({
@@ -834,6 +976,14 @@ async function runPromptOverrideStart(message: StartMessage, promptOverride: str
       failureCount: 0,
       currentSessionTitle: session.title,
       currentBatchLabel: 'custom prompt'
+    })
+    logger.info('generation-worker', 'custom prompt session start', {
+      jobId: message.jobId,
+      sessionIndex: index,
+      sessionId: session.sessionId,
+      title: session.title,
+      turnCount: session.turns.length,
+      textChars: session.turns.reduce((count, turn) => count + turn.text.length, 0)
     })
 
     const sessionCandidates = collectGenerationPromptCandidates({
@@ -866,6 +1016,13 @@ async function runPromptOverrideStart(message: StartMessage, promptOverride: str
       currentSessionTitle: session.title,
       currentBatchLabel: `${sessionCandidates.length} candidates`
     })
+    logger.info('generation-worker', 'custom prompt session mining complete', {
+      jobId: message.jobId,
+      sessionIndex: index,
+      sessionId: session.sessionId,
+      candidateCount: sessionCandidates.length,
+      durationMs: elapsedMs(sessionStartedAt)
+    })
   }
 
   emitCheckpoint({
@@ -880,16 +1037,31 @@ async function runPromptOverrideStart(message: StartMessage, promptOverride: str
     candidates: promptCandidates,
     customPrompt: promptOverride
   })
+  logger.info('generation-worker', 'prompt override start complete', {
+    jobId: message.jobId,
+    candidateCount: promptCandidates.length,
+    durationMs: elapsedMs(startedAt)
+  })
 }
 
 parentPort?.on(
   'message',
   (message: StartMessage | { type: 'cancel'; jobId: string }) => {
     if (message.type === 'cancel') {
+      logger.info('generation-worker', 'cancel requested', {
+        jobId: message.jobId
+      })
       cancelled = true
       return
     }
 
+    logger.info('generation-worker', 'start message received', {
+      jobId: message.jobId,
+      mock: isMockLlmEnabled(),
+      resumeCheckpoint: message.resumeCheckpoint?.checkpoint ?? null,
+      hasPromptOverride: Boolean(message.promptOverride?.trim()),
+      ...summarizeWorkerSessions(message.sessions)
+    })
     void runStart(message)
   }
 )

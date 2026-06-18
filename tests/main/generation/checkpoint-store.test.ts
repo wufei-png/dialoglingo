@@ -50,6 +50,7 @@ const settings = {
     includeArchivedSessions: false
   },
   ui: {
+    locale: 'en',
     splitRatio: 0.3,
     workbookSplitRatio: 0.65,
     workbookSourcePinned: false

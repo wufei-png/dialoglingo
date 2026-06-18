@@ -38,6 +38,10 @@ import {
 } from './generation/checkpointStore'
 import { runGenerationJob } from './generation/jobRunner'
 import { writeWorkbookDraft } from './generation/materializeWorkbook'
+import {
+  createMockLearningItemDrafts,
+  isMockLlmEnabled
+} from './generation/mockLlm'
 import { buildGenerationPromptPreview } from './generation/promptPreview'
 import { validateGenerationRequest } from './generation/validateGeneration'
 import { createPreviewQuery, createWorkbookPreviewQuery } from './search/queryPreview'
@@ -125,6 +129,28 @@ let launchScanPhase: ScanPhase = 'idle'
 let lastScanFailureMessage: string | null = null
 let lastLaunchPlan: LaunchPlan | null = null
 let activeSessionScan: Promise<{ projectCount: number; sessionCount: number }> | null = null
+
+function elapsedMs(startedAt: number) {
+  return Date.now() - startedAt
+}
+
+function summarizeGenerationSessions(sessions: GenerationSessionRow[]) {
+  return sessions.reduce(
+    (summary, session) => {
+      summary.turnCount += session.turns.length
+      summary.textChars += session.turns.reduce(
+        (count, turn) => count + turn.text.length,
+        0
+      )
+      return summary
+    },
+    {
+      sessionCount: sessions.length,
+      turnCount: 0,
+      textChars: 0
+    }
+  )
+}
 
 function emitScanEvent(event: ScanEvent) {
   launchScanPhase = event.phase
@@ -248,6 +274,10 @@ function emitJobEvent(event: {
     | 'model-request-failure'
     | 'invalid-structured-payload'
 }) {
+  logger.info(
+    'generation-event',
+    `job=${event.jobId} kind=${event.kind} status=${event.status} processed=${event.processedSessionCount}/${event.totalSelectedSessionCount} created=${event.createdItemCount} label=${event.currentBatchLabel ?? ''}`
+  )
   const previousProgress = readJobProgress(event.jobId)
   const resumeStatus =
     event.status === 'failed' || event.status === 'cancelled'
@@ -274,6 +304,7 @@ function emitJobEvent(event: {
     canResume: resumeStatus.canResume,
     resumeBlockedReason: resumeStatus.resumeBlockedReason
   }
+  logger.debug('generation-event', 'enriched job event', enrichedEvent)
 
   jobSnapshots.set(event.jobId, {
     id: event.jobId,
@@ -310,45 +341,219 @@ function emitJobEvent(event: {
   }
 }
 
-function querySessionRows(sessionIds: string[]) {
-  const query = sqlite.prepare(
+type GenerationSessionRow = Parameters<typeof runGenerationJob>[0]['sessions'][number]
+
+function querySessionRows(sessionIds: string[]): GenerationSessionRow[] {
+  if (sessionIds.length === 0) {
+    return []
+  }
+
+  const startedAt = Date.now()
+  logger.info('generation', `load full sessions start count=${sessionIds.length}`)
+  logger.debug('generation', 'load full sessions ids', { sessionIds })
+
+  const placeholders = sessionIds.map(() => '?').join(', ')
+  const rows = sqlite
+    .prepare(
     `
       select
-        s.id,
+        s.id as sessionId,
         s.title,
         st.role,
         st.text,
         st.source_span_ref as sourceSpanRef,
         st.is_tool_noise as isToolNoise
       from sessions s
-      join session_turns st on st.session_id = s.id
-      where s.id = ?
-      order by st.seq asc
+      left join session_turns st on st.session_id = s.id
+      where s.id in (${placeholders})
+      order by s.id asc, st.seq asc
     `
+    )
+    .all(...sessionIds) as Array<{
+      sessionId: string
+      title: string
+      role: 'user' | 'assistant' | null
+      text: string | null
+      sourceSpanRef: string | null
+      isToolNoise: number | null
+    }>
+
+  const sessionsById = new Map<string, GenerationSessionRow>()
+
+  for (const row of rows) {
+    const session =
+      sessionsById.get(row.sessionId) ??
+      ({
+        sessionId: row.sessionId,
+        title: row.title,
+        turns: []
+      } satisfies GenerationSessionRow)
+    sessionsById.set(row.sessionId, session)
+
+    if (!row.text || !row.sourceSpanRef || !row.role) {
+      continue
+    }
+
+    session.turns.push({
+      role: row.role,
+      text: row.text,
+      sourceSpanRef: row.sourceSpanRef,
+      isToolNoise: Boolean(row.isToolNoise)
+    })
+  }
+
+  const sessions = sessionIds.map((sessionId) => {
+    const session = sessionsById.get(sessionId)
+    if (!session) {
+      throw new Error(`Selected session ${sessionId} is no longer indexed.`)
+    }
+
+    return session
+  })
+  const summary = summarizeGenerationSessions(sessions)
+  logger.info('generation', 'load full sessions complete', {
+    ...summary,
+    rowCount: rows.length,
+    durationMs: elapsedMs(startedAt)
+  })
+  logger.debug(
+    'generation',
+    'load full sessions per-session summary',
+    sessions.map((session) => ({
+      sessionId: session.sessionId,
+      title: session.title,
+      turnCount: session.turns.length,
+      textChars: session.turns.reduce((count, turn) => count + turn.text.length, 0)
+    }))
   )
 
-  return sessionIds.map((sessionId) => {
-    const turns = query.all(sessionId) as Array<{
+  return sessions
+}
+
+function queryMockSessionRows(sessionIds: string[]): GenerationSessionRow[] {
+  if (sessionIds.length === 0) {
+    return []
+  }
+
+  const startedAt = Date.now()
+  logger.info('generation', `load mock sessions start count=${sessionIds.length}`)
+  logger.debug('generation', 'load mock sessions ids', { sessionIds })
+
+  const placeholders = sessionIds.map(() => '?').join(', ')
+  const rows = sqlite
+    .prepare(
+      `
+        select
+          s.id as sessionId,
+          s.title,
+          st.role,
+          st.text,
+          st.source_span_ref as sourceSpanRef,
+          st.is_tool_noise as isToolNoise
+        from sessions s
+        left join session_turns st
+          on st.session_id = s.id
+          and st.seq = (
+            select min(seq)
+            from session_turns
+            where session_id = s.id
+              and is_tool_noise = 0
+          )
+        where s.id in (${placeholders})
+      `
+    )
+    .all(...sessionIds) as Array<{
+      sessionId: string
       title: string
-      role: 'user' | 'assistant'
-      text: string
-      sourceSpanRef: string
-      isToolNoise: number
+      role: 'user' | 'assistant' | null
+      text: string | null
+      sourceSpanRef: string | null
+      isToolNoise: number | null
     }>
+  const rowsById = new Map(rows.map((row) => [row.sessionId, row]))
+
+  const sessions = sessionIds.map((sessionId) => {
+    const row = rowsById.get(sessionId)
+    if (!row) {
+      throw new Error(`Selected session ${sessionId} is no longer indexed.`)
+    }
 
     return {
       sessionId,
-      title:
-        (
-          sqlite
-            .prepare('select title from sessions where id = ?')
-            .get(sessionId) as { title?: string } | undefined
-        )?.title ?? sessionId,
-      turns: turns.map((turn) => ({
-        ...turn,
-        isToolNoise: Boolean(turn.isToolNoise)
-      }))
+      title: row.title,
+      turns:
+        row.text && row.sourceSpanRef && row.role
+          ? [
+              {
+                role: row.role,
+                text: row.text,
+                sourceSpanRef: row.sourceSpanRef,
+                isToolNoise: Boolean(row.isToolNoise)
+              }
+            ]
+          : []
     }
+  })
+  const summary = summarizeGenerationSessions(sessions)
+  logger.info('generation', 'load mock sessions complete', {
+    ...summary,
+    rowCount: rows.length,
+    durationMs: elapsedMs(startedAt)
+  })
+  logger.debug(
+    'generation',
+    'load mock sessions per-session summary',
+    sessions.map((session) => ({
+      sessionId: session.sessionId,
+      title: session.title,
+      turnCount: session.turns.length,
+      textChars: session.turns.reduce((count, turn) => count + turn.text.length, 0)
+    }))
+  )
+
+  return sessions
+}
+
+function buildMockPromptPreview(selectedSessionCount: number) {
+  logger.info(
+    'generation-preview',
+    `mock prompt preview selectedSessions=${selectedSessionCount}`
+  )
+  return {
+    candidateCount: createMockLearningItemDrafts().length,
+    prompt: [
+      'Mock LLM mode is enabled.',
+      `${selectedSessionCount} selected session${selectedSessionCount === 1 ? '' : 's'} will generate deterministic sample workbook items.`,
+      'No provider, CLI, or remote LLM request will be called.'
+    ].join('\n')
+  }
+}
+
+function querySessionsForGeneration(sessionIds: string[]) {
+  return isMockLlmEnabled() ? queryMockSessionRows(sessionIds) : querySessionRows(sessionIds)
+}
+
+function emitJobLoadingPhase(input: {
+  jobId: string
+  selectedSessionCount: number
+}) {
+  logger.info(
+    'generation',
+    `job=${input.jobId} loading phase selectedSessions=${input.selectedSessionCount} mock=${isMockLlmEnabled()}`
+  )
+  emitJobEvent({
+    kind: 'phase',
+    jobId: input.jobId,
+    status: 'normalizing',
+    totalSelectedSessionCount: input.selectedSessionCount,
+    processedSessionCount: 0,
+    createdItemCount: 0,
+    warningCount: 0,
+    failureCount: 0,
+    currentSessionTitle: null,
+    currentBatchLabel: isMockLlmEnabled()
+      ? 'mock llm startup'
+      : 'loading selected sessions'
   })
 }
 
@@ -382,6 +587,7 @@ async function startGenerationRun(input: {
   }
   resumeCheckpoint?: Parameters<typeof runGenerationJob>[0]['resumeCheckpoint']
 }) {
+  const startedAt = Date.now()
   validateGenerationRequest({
     sessionIds: input.snapshot.sessionIds,
     settings: input.runtimeSettings
@@ -389,14 +595,40 @@ async function startGenerationRun(input: {
 
   const jobId = crypto.randomUUID()
   const workbookId = `workbook-${jobId}`
-  const sessionSnapshots = querySessionSnapshots(input.snapshot.sessionIds)
+  logger.info('generation', 'start requested', {
+    jobId,
+    workbookId,
+    runKind: input.snapshot.runKind,
+    selectedSessionCount: input.snapshot.sessionIds.length,
+    mock: isMockLlmEnabled(),
+    hasPromptOverride: Boolean(input.snapshot.promptOverride?.trim())
+  })
+  logger.debug('generation', 'start snapshot', {
+    jobId,
+    sessionIds: input.snapshot.sessionIds,
+    backendKind: input.runtimeSettings.modelBackend.kind,
+    generation: input.runtimeSettings.generation
+  })
 
+  const snapshotStartedAt = Date.now()
+  const sessionSnapshots = querySessionSnapshots(input.snapshot.sessionIds)
+  logger.debug('generation', 'session snapshots loaded', {
+    jobId,
+    count: sessionSnapshots.length,
+    durationMs: elapsedMs(snapshotStartedAt)
+  })
+
+  const checkpointStartedAt = Date.now()
   createGenerationJobCheckpoint({
     db: sqlite,
     jobId,
     createdAt: new Date().toISOString(),
     snapshot: input.snapshot,
     sessionSnapshots
+  })
+  logger.debug('generation', 'initial checkpoint created', {
+    jobId,
+    durationMs: elapsedMs(checkpointStartedAt)
   })
 
   jobSnapshots.set(jobId, {
@@ -415,7 +647,20 @@ async function startGenerationRun(input: {
     resumeBlockedReason: null
   })
 
-  const sessionsForGeneration = querySessionRows(input.snapshot.sessionIds)
+  emitJobLoadingPhase({
+    jobId,
+    selectedSessionCount: input.snapshot.sessionIds.length
+  })
+
+  const loadStartedAt = Date.now()
+  const sessionsForGeneration = querySessionsForGeneration(input.snapshot.sessionIds)
+  logger.info('generation', 'session payload ready', {
+    jobId,
+    mode: isMockLlmEnabled() ? 'mock-light' : 'full',
+    ...summarizeGenerationSessions(sessionsForGeneration),
+    durationMs: elapsedMs(loadStartedAt),
+    elapsedSinceStartMs: elapsedMs(startedAt)
+  })
   let completedItems: Array<{
     id: string
     itemType: 'Expression' | 'Sentence'
@@ -429,6 +674,11 @@ async function startGenerationRun(input: {
   }> = []
   let workbookWritten = false
 
+  logger.info('generation', 'dispatch worker start', {
+    jobId,
+    ...summarizeGenerationSessions(sessionsForGeneration),
+    elapsedSinceStartMs: elapsedMs(startedAt)
+  })
   const worker = await runGenerationJob({
     jobId,
     sessions: sessionsForGeneration,
@@ -436,22 +686,57 @@ async function startGenerationRun(input: {
     promptOverride: input.snapshot.promptOverride ?? undefined,
     resumeCheckpoint: input.resumeCheckpoint ?? null,
     onCheckpoint: (event) => {
+      const checkpointPersistStartedAt = Date.now()
+      logger.debug('generation-checkpoint', 'received checkpoint', {
+        jobId,
+        checkpoint: event.checkpoint,
+        candidateCount:
+          'candidates' in event && Array.isArray(event.candidates)
+            ? event.candidates.length
+            : undefined,
+        batchIndex: 'batchIndex' in event ? event.batchIndex : undefined
+      })
       const lastCheckpoint = persistGenerationCheckpointEvent(sqlite, event)
+      logger.debug('generation-checkpoint', 'persisted checkpoint', {
+        jobId,
+        checkpoint: event.checkpoint,
+        lastCheckpoint,
+        durationMs: elapsedMs(checkpointPersistStartedAt)
+      })
       mergeJobProgress(jobId, { lastCheckpoint })
     },
     onCompletedItems: (items) => {
+      logger.info('generation', 'completed items received from worker', {
+        jobId,
+        itemCount: items.length,
+        elapsedSinceStartMs: elapsedMs(startedAt)
+      })
       completedItems = items
     },
     emit: (event) => {
       const typedEvent = event as Parameters<typeof emitJobEvent>[0]
 
       if (typedEvent.status === 'completed' && !workbookWritten) {
+        const materializeStartedAt = Date.now()
+        logger.info('generation', 'materialize workbook start', {
+          jobId,
+          workbookId,
+          itemCount: completedItems.length,
+          elapsedSinceStartMs: elapsedMs(startedAt)
+        })
         writeWorkbookDraft(sqlite, {
           workbookId,
           jobId,
           items: completedItems
         })
         workbookWritten = true
+        logger.info('generation', 'materialize workbook complete', {
+          jobId,
+          workbookId,
+          itemCount: completedItems.length,
+          durationMs: elapsedMs(materializeStartedAt),
+          elapsedSinceStartMs: elapsedMs(startedAt)
+        })
 
         const current = jobSnapshots.get(jobId)
         if (current) {
@@ -469,6 +754,10 @@ async function startGenerationRun(input: {
   })
 
   jobWorkers.set(jobId, worker)
+  logger.info('generation', 'worker dispatched', {
+    jobId,
+    elapsedSinceStartMs: elapsedMs(startedAt)
+  })
 
   return {
     jobId,
@@ -747,15 +1036,38 @@ function createRouter() {
           throw new Error('Select at least one session before generating.')
         }
 
+        const startedAt = Date.now()
+        logger.info('generation-preview', 'prompt preview start', {
+          selectedSessionCount: input.sessionIds.length,
+          mock: isMockLlmEnabled()
+        })
         const currentSettings = settings.get() as Settings
-        const sessionsForGeneration = querySessionRows(input.sessionIds)
+        if (isMockLlmEnabled()) {
+          const preview = buildMockPromptPreview(input.sessionIds.length)
+          logger.info('generation-preview', 'prompt preview complete', {
+            selectedSessionCount: input.sessionIds.length,
+            candidateCount: preview.candidateCount,
+            mode: 'mock',
+            durationMs: elapsedMs(startedAt)
+          })
+          return preview
+        }
 
-        return buildGenerationPromptPreview({
+        const sessionsForGeneration = querySessionRows(input.sessionIds)
+        const preview = buildGenerationPromptPreview({
           sessions: sessionsForGeneration,
           expressionDifficulty: currentSettings.generation.expressionDifficulty,
           maxItemsPerSession: currentSettings.generation.maxItemsPerSession,
           batchSize: currentSettings.generation.batchSize
         })
+        logger.info('generation-preview', 'prompt preview complete', {
+          selectedSessionCount: input.sessionIds.length,
+          candidateCount: preview.candidateCount,
+          mode: 'full',
+          durationMs: elapsedMs(startedAt)
+        })
+
+        return preview
       },
       start: async (input: { sessionIds: string[]; promptOverride?: string | null }) => {
         const currentSettings = settings.get() as Settings

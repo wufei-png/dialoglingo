@@ -23,6 +23,7 @@ export const jobEventSchema = z.object({
       'model-request-failure',
       'invalid-structured-payload'
     ])
+    .nullable()
     .optional()
 })
 
