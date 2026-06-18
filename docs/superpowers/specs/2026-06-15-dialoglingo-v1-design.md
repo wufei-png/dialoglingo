@@ -1067,10 +1067,9 @@ Anki is the primary target, but export must always degrade cleanly.
   - `Expression`
   - `Sentence`
 - `Tag prefix`
-- `Output location`
-- `New folder name`
-  - visible for text-bundle exports
-  - names the subfolder created inside `Output location`
+- `Output name`
+  - names the `.apkg` file for Anki package export
+  - names the subfolder created inside the selected output location for text-bundle exports
 
 Do not add persistent template-management complexity in v1. The generation confirmation sheet may expose only the current run's final prompt draft.
 

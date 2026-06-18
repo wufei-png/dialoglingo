@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeftRight,
   FileText,
-  FolderOpen,
   Layers,
   Tag as TagIcon,
   X
@@ -16,7 +15,7 @@ type ExportFormat = 'anki-package' | 'anki-text-bundle' | 'generic-text-bundle'
 type ExportConfirmPayload = {
   format: ExportFormat
   deckName: string
-  bundleFolderName: string
+  outputName: string
   direction: 'en-zh' | 'zh-en' | 'bilingual'
   includeExpressions: boolean
   includeSentences: boolean
@@ -63,11 +62,7 @@ function SelectionButton(props: { selected: boolean; label: string; onToggle: ()
   )
 }
 
-function isTextBundleFormat(format: ExportFormat) {
-  return format === 'anki-text-bundle' || format === 'generic-text-bundle'
-}
-
-function defaultBundleFolderName(deckName: string) {
+function defaultOutputName(deckName: string) {
   return deckName.trim() || 'DialogLingo'
 }
 
@@ -75,8 +70,8 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
   const { t } = useTranslation()
   useEscapeToClose(open, onClose)
   const [deckName, setDeckName] = useState('DialogLingo')
-  const [bundleFolderName, setBundleFolderName] = useState('DialogLingo')
-  const [bundleFolderNameEdited, setBundleFolderNameEdited] = useState(false)
+  const [outputName, setOutputName] = useState('DialogLingo')
+  const [outputNameEdited, setOutputNameEdited] = useState(false)
   const [direction, setDirection] = useState<'en-zh' | 'zh-en' | 'bilingual'>('bilingual')
   const [includeExpressions, setIncludeExpressions] = useState(true)
   const [includeSentences, setIncludeSentences] = useState(true)
@@ -87,7 +82,6 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
   const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
-  const showBundleFolderField = isTextBundleFormat(selectedFormat)
 
   useEffect(() => {
     if (!open || outputLocation) {
@@ -107,10 +101,10 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
   }, [open, outputLocation])
 
   useEffect(() => {
-    if (!bundleFolderNameEdited) {
-      setBundleFolderName(defaultBundleFolderName(deckName))
+    if (!outputNameEdited) {
+      setOutputName(defaultOutputName(deckName))
     }
-  }, [bundleFolderNameEdited, deckName])
+  }, [outputNameEdited, deckName])
 
   async function runExport(format: ExportFormat) {
     setExportMessage(null)
@@ -132,7 +126,7 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
       const result = await onConfirm({
         format,
         deckName,
-        bundleFolderName,
+        outputName,
         direction,
         includeExpressions,
         includeSentences,
@@ -216,48 +210,6 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
           <label className="export-field">
             <span className="export-field-copy">
               <span className="export-field-label">
-                <IconLabel icon={FolderOpen}>{t('export.outputFolder')}</IconLabel>
-              </span>
-              <span className="export-field-description">
-                {t('export.outputFolderDescription')}
-              </span>
-            </span>
-            <input
-              aria-label={t('export.outputFolder')}
-              value={outputLocation}
-              onChange={(event) => setOutputLocation(event.target.value)}
-            />
-          </label>
-          <label
-            aria-hidden={!showBundleFolderField}
-            className={
-              showBundleFolderField
-                ? 'export-field export-bundle-folder-field'
-                : 'export-field export-bundle-folder-field is-hidden'
-            }
-          >
-            <span className="export-field-copy">
-              <span className="export-field-label">
-                <IconLabel icon={FolderOpen}>{t('export.bundleFolderName')}</IconLabel>
-              </span>
-              <span className="export-field-description">
-                {t('export.bundleFolderNameDescription')}
-              </span>
-            </span>
-            <input
-              aria-label={t('export.bundleFolderName')}
-              disabled={!showBundleFolderField}
-              placeholder={defaultBundleFolderName(deckName)}
-              value={bundleFolderName}
-              onChange={(event) => {
-                setBundleFolderNameEdited(true)
-                setBundleFolderName(event.target.value)
-              }}
-            />
-          </label>
-          <label className="export-field">
-            <span className="export-field-copy">
-              <span className="export-field-label">
                 <IconLabel icon={ArrowLeftRight}>{t('export.cardDirection')}</IconLabel>
               </span>
               <span className="export-field-description">
@@ -275,6 +227,25 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
               <option value="zh-en">{t('export.directionZhEn')}</option>
               <option value="bilingual">{t('export.directionBilingual')}</option>
             </select>
+          </label>
+          <label className="export-field">
+            <span className="export-field-copy">
+              <span className="export-field-label">
+                <IconLabel icon={FileText}>{t('export.outputName')}</IconLabel>
+              </span>
+              <span className="export-field-description">
+                {t('export.outputNameDescription')}
+              </span>
+            </span>
+            <input
+              aria-label={t('export.outputName')}
+              placeholder={defaultOutputName(deckName)}
+              value={outputName}
+              onChange={(event) => {
+                setOutputNameEdited(true)
+                setOutputName(event.target.value)
+              }}
+            />
           </label>
         </div>
         <div className="export-option-list">

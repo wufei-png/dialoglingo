@@ -225,14 +225,11 @@ const en = {
     deckNameDescription: 'Name used for the Anki deck and export manifest.',
     tagPrefix: 'Tag prefix',
     tagPrefixDescription: 'Prefix applied to generated Anki tags.',
-    outputFolder: 'Output folder',
-    outputFolderDescription:
-      'The export button asks for a folder before writing files. This field is the starting folder.',
-    bundleFolderName: 'New folder name',
-    bundleFolderNameDescription:
-      'Text bundle exports create this folder inside the output folder.',
     cardDirection: 'Card direction',
     cardDirectionDescription: 'Controls which language appears on the front or back.',
+    outputName: 'Output name',
+    outputNameDescription:
+      'Used as the .apkg file name or the text bundle folder name.',
     directionEnZh: 'EN -> ZH',
     directionZhEn: 'ZH -> EN',
     directionBilingual: 'Bilingual',

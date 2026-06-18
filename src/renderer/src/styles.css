@@ -988,11 +988,6 @@ h3 .icon-label {
   gap: 18px;
 }
 
-.export-bundle-folder-field.is-hidden {
-  visibility: hidden;
-  pointer-events: none;
-}
-
 .export-field-copy,
 .export-option-copy {
   display: grid;

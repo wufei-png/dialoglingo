@@ -17,7 +17,8 @@ import { buildAnkiPackage } from './export/apkg'
 import { writeGenericTextBundle } from './export/genericTextBundle'
 import {
   createUniqueExportSubdirectory,
-  normalizeExportSubfolderName
+  ensureApkgFileName,
+  normalizeExportOutputName
 } from './export/outputDirectory'
 import {
   countExportRows,
@@ -1247,7 +1248,7 @@ function createRouter() {
           includeSentences: boolean
           tagPrefix: string
           outputLocation: string
-          bundleFolderName?: string
+          outputName?: string
           keepFlaggedItems?: boolean
         }
       }) => {
@@ -1277,8 +1278,8 @@ function createRouter() {
         const isTextBundle =
           input.request.format === 'anki-text-bundle' ||
           input.request.format === 'generic-text-bundle'
-        const bundleFolderName = normalizeExportSubfolderName(
-          input.request.bundleFolderName,
+        const outputName = normalizeExportOutputName(
+          input.request.outputName,
           input.request.deckName
         )
         const exportInput: ExportRowsInput = {
@@ -1300,7 +1301,7 @@ function createRouter() {
           workbookId: input.workbookId,
           format: input.request.format,
           outputLocation,
-          ...(isTextBundle ? { bundleFolderName } : {}),
+          outputName,
           selectedItemCounts,
           exportedItemCounts,
           warningCount: exportWarnings.length
@@ -1310,20 +1311,20 @@ function createRouter() {
           if (input.request.format === 'anki-text-bundle') {
             outputPath = await createUniqueExportSubdirectory(
               outputLocation,
-              bundleFolderName
+              outputName
             )
             await writeAnkiTextBundle(outputPath, exportInput)
           } else if (input.request.format === 'generic-text-bundle') {
             outputPath = await createUniqueExportSubdirectory(
               outputLocation,
-              bundleFolderName
+              outputName
             )
             await writeGenericTextBundle(outputPath, exportInput)
           } else {
             const output = await buildAnkiPackage(exportInput)
             const filePath = outputLocation.endsWith('.apkg')
               ? outputLocation
-              : path.join(outputLocation, `${input.request.deckName}.apkg`)
+              : path.join(outputLocation, ensureApkgFileName(outputName))
             outputPath = filePath
             await mkdir(path.dirname(filePath), { recursive: true })
             await writeFile(filePath, output.data)
@@ -1352,7 +1353,7 @@ function createRouter() {
               JSON.stringify({
                 deckName: input.request.deckName,
                 direction: input.request.direction,
-                ...(isTextBundle ? { bundleFolderName } : {}),
+                outputName,
                 keepFlaggedItems: input.request.keepFlaggedItems ?? false,
                 selectedItemCounts,
                 exportedItemCounts,

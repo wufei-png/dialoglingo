@@ -7,12 +7,16 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && 'code' in error
 }
 
-export function normalizeExportSubfolderName(
-  folderName: string | null | undefined,
+export function normalizeExportOutputName(
+  outputName: string | null | undefined,
   fallbackName: string
 ) {
   const fallback = sanitizeFolderName(fallbackName) || 'DialogLingo Export'
-  return sanitizeFolderName(folderName ?? '') || fallback
+  return sanitizeFolderName(outputName ?? '') || fallback
+}
+
+export function ensureApkgFileName(outputName: string) {
+  return outputName.toLowerCase().endsWith('.apkg') ? outputName : `${outputName}.apkg`
 }
 
 function sanitizeFolderName(folderName: string) {

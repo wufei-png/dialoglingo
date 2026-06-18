@@ -4,16 +4,22 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   createUniqueExportSubdirectory,
-  normalizeExportSubfolderName
+  ensureApkgFileName,
+  normalizeExportOutputName
 } from '../../../src/main/export/outputDirectory'
 
 describe('export output directories', () => {
-  it('normalizes user-provided bundle folder names', () => {
+  it('normalizes user-provided output names', () => {
     expect(
-      normalizeExportSubfolderName('../Dialog:Lingo/Bundle?', 'Fallback')
+      normalizeExportOutputName('../Dialog:Lingo/Bundle?', 'Fallback')
     ).toBe('Dialog-Lingo-Bundle')
-    expect(normalizeExportSubfolderName('   ', 'DialogLingo')).toBe('DialogLingo')
-    expect(normalizeExportSubfolderName('CON', 'DialogLingo')).toBe('CON-export')
+    expect(normalizeExportOutputName('   ', 'DialogLingo')).toBe('DialogLingo')
+    expect(normalizeExportOutputName('CON', 'DialogLingo')).toBe('CON-export')
+  })
+
+  it('adds the Anki package extension only when needed', () => {
+    expect(ensureApkgFileName('DialogLingo')).toBe('DialogLingo.apkg')
+    expect(ensureApkgFileName('DialogLingo.apkg')).toBe('DialogLingo.apkg')
   })
 
   it('creates a new unique subdirectory for bundle exports', async () => {
