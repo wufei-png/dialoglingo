@@ -274,7 +274,7 @@ function emitJobEvent(event: {
     | 'model-request-failure'
     | 'invalid-structured-payload'
 }) {
-  logger.info(
+  logger.debug(
     'generation-event',
     `job=${event.jobId} kind=${event.kind} status=${event.status} processed=${event.processedSessionCount}/${event.totalSelectedSessionCount} created=${event.createdItemCount} label=${event.currentBatchLabel ?? ''}`
   )
@@ -349,7 +349,7 @@ function querySessionRows(sessionIds: string[]): GenerationSessionRow[] {
   }
 
   const startedAt = Date.now()
-  logger.info('generation', `load full sessions start count=${sessionIds.length}`)
+  logger.debug('generation', `load full sessions start count=${sessionIds.length}`)
   logger.debug('generation', 'load full sessions ids', { sessionIds })
 
   const placeholders = sessionIds.map(() => '?').join(', ')
@@ -411,7 +411,7 @@ function querySessionRows(sessionIds: string[]): GenerationSessionRow[] {
     return session
   })
   const summary = summarizeGenerationSessions(sessions)
-  logger.info('generation', 'load full sessions complete', {
+  logger.debug('generation', 'load full sessions complete', {
     ...summary,
     rowCount: rows.length,
     durationMs: elapsedMs(startedAt)
@@ -436,7 +436,7 @@ function queryMockSessionRows(sessionIds: string[]): GenerationSessionRow[] {
   }
 
   const startedAt = Date.now()
-  logger.info('generation', `load mock sessions start count=${sessionIds.length}`)
+  logger.debug('generation', `load mock sessions start count=${sessionIds.length}`)
   logger.debug('generation', 'load mock sessions ids', { sessionIds })
 
   const placeholders = sessionIds.map(() => '?').join(', ')
@@ -495,7 +495,7 @@ function queryMockSessionRows(sessionIds: string[]): GenerationSessionRow[] {
     }
   })
   const summary = summarizeGenerationSessions(sessions)
-  logger.info('generation', 'load mock sessions complete', {
+  logger.debug('generation', 'load mock sessions complete', {
     ...summary,
     rowCount: rows.length,
     durationMs: elapsedMs(startedAt)
@@ -515,7 +515,7 @@ function queryMockSessionRows(sessionIds: string[]): GenerationSessionRow[] {
 }
 
 function buildMockPromptPreview(selectedSessionCount: number) {
-  logger.info(
+  logger.debug(
     'generation-preview',
     `mock prompt preview selectedSessions=${selectedSessionCount}`
   )
@@ -537,7 +537,7 @@ function emitJobLoadingPhase(input: {
   jobId: string
   selectedSessionCount: number
 }) {
-  logger.info(
+  logger.debug(
     'generation',
     `job=${input.jobId} loading phase selectedSessions=${input.selectedSessionCount} mock=${isMockLlmEnabled()}`
   )
@@ -674,7 +674,7 @@ async function startGenerationRun(input: {
   }> = []
   let workbookWritten = false
 
-  logger.info('generation', 'dispatch worker start', {
+  logger.debug('generation', 'dispatch worker start', {
     jobId,
     ...summarizeGenerationSessions(sessionsForGeneration),
     elapsedSinceStartMs: elapsedMs(startedAt)
@@ -706,7 +706,7 @@ async function startGenerationRun(input: {
       mergeJobProgress(jobId, { lastCheckpoint })
     },
     onCompletedItems: (items) => {
-      logger.info('generation', 'completed items received from worker', {
+      logger.debug('generation', 'completed items received from worker', {
         jobId,
         itemCount: items.length,
         elapsedSinceStartMs: elapsedMs(startedAt)
@@ -718,7 +718,7 @@ async function startGenerationRun(input: {
 
       if (typedEvent.status === 'completed' && !workbookWritten) {
         const materializeStartedAt = Date.now()
-        logger.info('generation', 'materialize workbook start', {
+        logger.debug('generation', 'materialize workbook start', {
           jobId,
           workbookId,
           itemCount: completedItems.length,
@@ -754,7 +754,7 @@ async function startGenerationRun(input: {
   })
 
   jobWorkers.set(jobId, worker)
-  logger.info('generation', 'worker dispatched', {
+  logger.debug('generation', 'worker dispatched', {
     jobId,
     elapsedSinceStartMs: elapsedMs(startedAt)
   })
@@ -1037,14 +1037,14 @@ function createRouter() {
         }
 
         const startedAt = Date.now()
-        logger.info('generation-preview', 'prompt preview start', {
+        logger.debug('generation-preview', 'prompt preview start', {
           selectedSessionCount: input.sessionIds.length,
           mock: isMockLlmEnabled()
         })
         const currentSettings = settings.get() as Settings
         if (isMockLlmEnabled()) {
           const preview = buildMockPromptPreview(input.sessionIds.length)
-          logger.info('generation-preview', 'prompt preview complete', {
+          logger.debug('generation-preview', 'prompt preview complete', {
             selectedSessionCount: input.sessionIds.length,
             candidateCount: preview.candidateCount,
             mode: 'mock',
@@ -1060,7 +1060,7 @@ function createRouter() {
           maxItemsPerSession: currentSettings.generation.maxItemsPerSession,
           batchSize: currentSettings.generation.batchSize
         })
-        logger.info('generation-preview', 'prompt preview complete', {
+        logger.debug('generation-preview', 'prompt preview complete', {
           selectedSessionCount: input.sessionIds.length,
           candidateCount: preview.candidateCount,
           mode: 'full',

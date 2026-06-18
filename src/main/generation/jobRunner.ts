@@ -72,7 +72,7 @@ export async function runGenerationJob(input: {
   ) => void
 }) {
   const startedAt = Date.now()
-  logger.info('generation-worker', 'spawn start', {
+  logger.debug('generation-worker', 'spawn start', {
     jobId: input.jobId,
     ...summarizeSessions(input.sessions)
   })
@@ -96,7 +96,7 @@ export async function runGenerationJob(input: {
       currentBatchLabel?: string | null
       items?: Parameters<typeof input.onCompletedItems>[0]
     }
-    logger.info('generation-worker', 'event received from worker', {
+    logger.debug('generation-worker', 'event received from worker', {
       jobId: input.jobId,
       kind: payload.kind,
       status: payload.status,
@@ -111,22 +111,28 @@ export async function runGenerationJob(input: {
 
     input.emit(jobEventSchema.parse(event))
   })
-  logger.info('generation-worker', 'spawn complete', {
+  logger.debug('generation-worker', 'spawn complete', {
     jobId: input.jobId,
     durationMs: elapsedMs(startedAt)
   })
   worker.once('online', () => {
-    logger.info('generation-worker', 'worker online', {
+    logger.debug('generation-worker', 'worker online', {
       jobId: input.jobId,
       elapsedSinceSpawnMs: elapsedMs(startedAt)
     })
   })
   worker.once('exit', (code) => {
-    logger.info('generation-worker', 'worker exit', {
+    const payload = {
       jobId: input.jobId,
       code,
       elapsedSinceSpawnMs: elapsedMs(startedAt)
-    })
+    }
+    if (code === 0) {
+      logger.debug('generation-worker', 'worker exit', payload)
+      return
+    }
+
+    logger.warn('generation-worker', 'worker exit', payload)
   })
 
   worker.on('error', (error) => {
@@ -154,7 +160,7 @@ export async function runGenerationJob(input: {
   })
 
   const postStartedAt = Date.now()
-  logger.info('generation-worker', 'post start message begin', {
+  logger.debug('generation-worker', 'post start message begin', {
     jobId: input.jobId,
     ...summarizeSessions(input.sessions),
     elapsedSinceSpawnMs: elapsedMs(startedAt)
@@ -169,7 +175,7 @@ export async function runGenerationJob(input: {
     promptOverride: input.promptOverride,
     resumeCheckpoint: input.resumeCheckpoint ?? null
   })
-  logger.info('generation-worker', 'post start message complete', {
+  logger.debug('generation-worker', 'post start message complete', {
     jobId: input.jobId,
     durationMs: elapsedMs(postStartedAt),
     elapsedSinceSpawnMs: elapsedMs(startedAt)

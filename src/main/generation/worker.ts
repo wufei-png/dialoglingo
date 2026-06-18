@@ -60,7 +60,7 @@ type StartMessage = {
 
 let cancelled = false
 
-logger.info('generation-worker', 'worker module loaded', {
+logger.debug('generation-worker', 'worker module loaded', {
   pid: process.pid,
   mock: isMockLlmEnabled()
 })
@@ -364,7 +364,7 @@ function finalizeAndRankItems(items: WorkerItem[], generation: StartMessage['gen
 
 async function runMockStart(message: StartMessage) {
   const startedAt = Date.now()
-  logger.info('generation-worker', 'mock start begin', {
+  logger.debug('generation-worker', 'mock start begin', {
     jobId: message.jobId,
     ...summarizeWorkerSessions(message.sessions)
   })
@@ -402,7 +402,7 @@ async function runMockStart(message: StartMessage) {
     }),
     message.generation
   )
-  logger.info('generation-worker', 'mock drafts ready', {
+  logger.debug('generation-worker', 'mock drafts ready', {
     jobId: message.jobId,
     draftCount: drafts.length,
     itemCount: items.length,
@@ -698,7 +698,7 @@ async function runEnrichmentFromCandidates(input: {
   }
 
   const rankingStartedAt = Date.now()
-  logger.info('generation-worker', 'ranking start', {
+  logger.debug('generation-worker', 'ranking start', {
     jobId: input.message.jobId,
     itemCount: items.length,
     rankedOrderIds: input.rankedOrderIds?.length ?? 0
@@ -867,7 +867,7 @@ async function runFreshStart(message: StartMessage) {
       currentSessionTitle: session.title,
       currentBatchLabel: null
     })
-    logger.info('generation-worker', 'session normalizing start', {
+    logger.debug('generation-worker', 'session normalizing start', {
       jobId: message.jobId,
       sessionIndex: index,
       sessionId: session.sessionId,
@@ -907,7 +907,7 @@ async function runFreshStart(message: StartMessage) {
       currentSessionTitle: session.title,
       currentBatchLabel: `${candidates.length} candidates`
     })
-    logger.info('generation-worker', 'session mining complete', {
+    logger.debug('generation-worker', 'session mining complete', {
       jobId: message.jobId,
       sessionIndex: index,
       sessionId: session.sessionId,
@@ -977,7 +977,7 @@ async function runPromptOverrideStart(message: StartMessage, promptOverride: str
       currentSessionTitle: session.title,
       currentBatchLabel: 'custom prompt'
     })
-    logger.info('generation-worker', 'custom prompt session start', {
+    logger.debug('generation-worker', 'custom prompt session start', {
       jobId: message.jobId,
       sessionIndex: index,
       sessionId: session.sessionId,
@@ -1016,7 +1016,7 @@ async function runPromptOverrideStart(message: StartMessage, promptOverride: str
       currentSessionTitle: session.title,
       currentBatchLabel: `${sessionCandidates.length} candidates`
     })
-    logger.info('generation-worker', 'custom prompt session mining complete', {
+    logger.debug('generation-worker', 'custom prompt session mining complete', {
       jobId: message.jobId,
       sessionIndex: index,
       sessionId: session.sessionId,
@@ -1055,7 +1055,7 @@ parentPort?.on(
       return
     }
 
-    logger.info('generation-worker', 'start message received', {
+    logger.debug('generation-worker', 'start message received', {
       jobId: message.jobId,
       mock: isMockLlmEnabled(),
       resumeCheckpoint: message.resumeCheckpoint?.checkpoint ?? null,
