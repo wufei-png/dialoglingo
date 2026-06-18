@@ -1,8 +1,10 @@
 # DialogLingo
 
-[中文版](README_CN.md) | English
+<p align="center">
+  <img src="imgs/cover/cover1.png" alt="DialogLingo Cover" width="100%">
+</p>
 
-![DialogLingo cover](imgs/cover/cover1.png)
+[中文版](README_CN.md) | English
 
 DialogLingo turns local AI-agent chat history into reviewable English learning workbooks and Anki-ready decks.
 

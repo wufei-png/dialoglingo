@@ -1,8 +1,10 @@
 # DialogLingo
 
-[English](README.md) | 中文版
+<p align="center">
+  <img src="imgs/cover/cover1.png" alt="DialogLingo 封面" width="100%">
+</p>
 
-![DialogLingo 封面](imgs/cover/cover1.png)
+[English](README.md) | 中文版
 
 DialogLingo 是一个本地优先的桌面应用，用来把 AI agent 的本地聊天历史转成可审核的英语学习册，并导出为 Anki 可用的卡片包或文本包。
 
