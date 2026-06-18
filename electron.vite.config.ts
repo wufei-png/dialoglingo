@@ -34,6 +34,9 @@ export default defineConfig({
     }
   },
   renderer: {
+    build: {
+      outDir: 'dist-electron/renderer'
+    },
     resolve: {
       alias: {
         '@renderer': path.resolve(rootDir, 'src/renderer/src'),

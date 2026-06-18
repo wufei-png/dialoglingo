@@ -1,0 +1,35 @@
+appId: io.github.wufei-png.dialoglingo
+productName: DialogLingo
+directories:
+  output: release
+files:
+  - dist-electron/**/*
+  - node_modules/**/*
+  - package.json
+asar: true
+asarUnpack:
+  - '**/*.node'
+nativeRebuilder: sequential
+mac:
+  category: public.app-category.education
+  icon: build/icons/icon.icns
+  target:
+    - dmg
+    - zip
+win:
+  icon: build/icons/icon.ico
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  category: Education
+  icon: build/icons/icon.png
+  target:
+    - AppImage
+    - deb
+publish:
+  provider: github
+  releaseType: draft

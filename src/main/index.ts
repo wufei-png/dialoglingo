@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -64,7 +64,21 @@ const { createIPCHandler } = require('electron-trpc/main') as {
   }
 }
 
-const dbPath = 'dialoglingo.db'
+function resolveDbPath() {
+  if (process.env.DIALOGLINGO_DB_PATH) {
+    return process.env.DIALOGLINGO_DB_PATH
+  }
+
+  if (!app.isPackaged) {
+    return 'dialoglingo.db'
+  }
+
+  const userDataDir = app.getPath('userData')
+  mkdirSync(userDataDir, { recursive: true })
+  return path.join(userDataDir, 'dialoglingo.db')
+}
+
+const dbPath = resolveDbPath()
 logger.info('startup', `initializing database at ${dbPath}`)
 const { sqlite } = createDb(dbPath)
 
