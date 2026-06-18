@@ -124,25 +124,34 @@ export function SessionTree(props: {
               style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
               <div className="session-row">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={item.row.selected}
-                    onChange={() => props.onToggleSession(item.row.sessionId)}
-                  />
-                  <button
-                    type="button"
-                    className={
-                      item.row.focused
-                        ? 'session-row-button is-focused'
-                        : 'session-row-button'
-                    }
-                    title={item.row.title}
-                    onClick={() => props.onFocusSession(item.row.sessionId)}
-                  >
-                    <span>{item.row.title}</span>
-                  </button>
-                </label>
+                <button
+                  type="button"
+                  className={
+                    item.row.focused ? 'session-row-button is-focused' : 'session-row-button'
+                  }
+                  title={item.row.title}
+                  onClick={() => props.onFocusSession(item.row.sessionId)}
+                >
+                  <span>{item.row.title}</span>
+                </button>
+                <button
+                  type="button"
+                  className={
+                    item.row.selected
+                      ? 'selection-button session-select-button is-selected'
+                      : 'selection-button session-select-button'
+                  }
+                  aria-pressed={item.row.selected}
+                  aria-label={
+                    item.row.selected
+                      ? `Deselect ${item.row.title}`
+                      : `Select ${item.row.title}`
+                  }
+                  title={item.row.selected ? 'Deselect session' : 'Select session'}
+                  onClick={() => props.onToggleSession(item.row.sessionId)}
+                >
+                  <span className="selection-button-check" aria-hidden="true" />
+                </button>
               </div>
             </div>
           )

@@ -15,6 +15,21 @@ type Props = {
   }) => void
 }
 
+function SelectionButton(props: { selected: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className={props.selected ? 'selection-button is-selected' : 'selection-button'}
+      aria-pressed={props.selected}
+      aria-label={props.selected ? `Disable ${props.label}` : `Enable ${props.label}`}
+      title={props.selected ? 'Selected' : 'Not selected'}
+      onClick={props.onToggle}
+    >
+      <span className="selection-button-check" aria-hidden="true" />
+    </button>
+  )
+}
+
 export function ExportModal({ open, onClose, onConfirm }: Props) {
   const [deckName, setDeckName] = useState('DialogLingo')
   const [direction, setDirection] = useState<'en-zh' | 'zh-en' | 'bilingual'>('bilingual')
@@ -33,56 +48,107 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
       <div className="sheet export-modal">
         <p className="sheet-kicker">Export Workbook</p>
         <h2>Choose an export target</h2>
-        <input
-          aria-label="Deck name"
-          value={deckName}
-          onChange={(event) => setDeckName(event.target.value)}
-        />
-        <input
-          aria-label="Tag prefix"
-          value={tagPrefix}
-          onChange={(event) => setTagPrefix(event.target.value)}
-        />
-        <input
-          aria-label="Output location"
-          value={outputLocation}
-          onChange={(event) => setOutputLocation(event.target.value)}
-        />
-        <select
-          aria-label="Direction"
-          value={direction}
-          onChange={(event) =>
-            setDirection(event.target.value as 'en-zh' | 'zh-en' | 'bilingual')
-          }
-        >
-          <option value="en-zh">EN -&gt; ZH</option>
-          <option value="zh-en">ZH -&gt; EN</option>
-          <option value="bilingual">Bilingual</option>
-        </select>
-        <label>
-          <input
-            type="checkbox"
-            checked={includeExpressions}
-            onChange={(event) => setIncludeExpressions(event.target.checked)}
-          />
-          Expressions
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={includeSentences}
-            onChange={(event) => setIncludeSentences(event.target.checked)}
-          />
-          Sentences
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={keepFlaggedItems}
-            onChange={(event) => setKeepFlaggedItems(event.target.checked)}
-          />
-          Keep flagged items
-        </label>
+        <div className="export-field-list">
+          <label className="export-field">
+            <span className="export-field-copy">
+              <span className="export-field-label">Deck name</span>
+              <span className="export-field-description">
+                Name used for the Anki deck and export manifest.
+              </span>
+            </span>
+            <input
+              aria-label="Deck name"
+              value={deckName}
+              onChange={(event) => setDeckName(event.target.value)}
+            />
+          </label>
+          <label className="export-field">
+            <span className="export-field-copy">
+              <span className="export-field-label">Tag prefix</span>
+              <span className="export-field-description">
+                Prefix applied to generated Anki tags.
+              </span>
+            </span>
+            <input
+              aria-label="Tag prefix"
+              value={tagPrefix}
+              onChange={(event) => setTagPrefix(event.target.value)}
+            />
+          </label>
+          <label className="export-field">
+            <span className="export-field-copy">
+              <span className="export-field-label">Output folder</span>
+              <span className="export-field-description">
+                Local folder where export files will be written.
+              </span>
+            </span>
+            <input
+              aria-label="Output folder"
+              value={outputLocation}
+              onChange={(event) => setOutputLocation(event.target.value)}
+            />
+          </label>
+          <label className="export-field">
+            <span className="export-field-copy">
+              <span className="export-field-label">Card direction</span>
+              <span className="export-field-description">
+                Controls which language appears on the front or back.
+              </span>
+            </span>
+            <select
+              aria-label="Card direction"
+              value={direction}
+              onChange={(event) =>
+                setDirection(event.target.value as 'en-zh' | 'zh-en' | 'bilingual')
+              }
+            >
+              <option value="en-zh">EN -&gt; ZH</option>
+              <option value="zh-en">ZH -&gt; EN</option>
+              <option value="bilingual">Bilingual</option>
+            </select>
+          </label>
+        </div>
+        <div className="export-option-list">
+          <div className="export-option-row">
+            <span className="export-option-copy">
+              <span className="export-option-label">Expressions</span>
+              <span className="export-option-description">
+                Include reviewed expression cards.
+              </span>
+            </span>
+            <SelectionButton
+              selected={includeExpressions}
+              label="Expressions"
+              onToggle={() => setIncludeExpressions((current) => !current)}
+            />
+          </div>
+          <div className="export-option-row">
+            <span className="export-option-copy">
+              <span className="export-option-label">Sentences</span>
+              <span className="export-option-description">
+                Include reviewed sentence cards.
+              </span>
+            </span>
+            <SelectionButton
+              selected={includeSentences}
+              label="Sentences"
+              onToggle={() => setIncludeSentences((current) => !current)}
+            />
+          </div>
+          <div className="export-option-row">
+            <span className="export-option-copy">
+              <span className="export-option-label">Keep flagged items</span>
+              <span className="export-option-description">
+                Export items marked for another review pass.
+              </span>
+            </span>
+            <SelectionButton
+              selected={keepFlaggedItems}
+              label="Keep flagged items"
+              onToggle={() => setKeepFlaggedItems((current) => !current)}
+            />
+          </div>
+        </div>
         <div className="sheet-actions">
           <button type="button" onClick={onClose}>
             Close
