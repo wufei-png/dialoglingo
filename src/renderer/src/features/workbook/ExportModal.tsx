@@ -87,6 +87,7 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
   const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const showBundleFolderField = isTextBundleFormat(selectedFormat)
 
   useEffect(() => {
     if (!open || outputLocation) {
@@ -227,27 +228,33 @@ export function ExportModal({ open, onClose, onConfirm }: Props) {
               onChange={(event) => setOutputLocation(event.target.value)}
             />
           </label>
-          {isTextBundleFormat(selectedFormat) ? (
-            <label className="export-field">
-              <span className="export-field-copy">
-                <span className="export-field-label">
-                  <IconLabel icon={FolderOpen}>{t('export.bundleFolderName')}</IconLabel>
-                </span>
-                <span className="export-field-description">
-                  {t('export.bundleFolderNameDescription')}
-                </span>
+          <label
+            aria-hidden={!showBundleFolderField}
+            className={
+              showBundleFolderField
+                ? 'export-field export-bundle-folder-field'
+                : 'export-field export-bundle-folder-field is-hidden'
+            }
+          >
+            <span className="export-field-copy">
+              <span className="export-field-label">
+                <IconLabel icon={FolderOpen}>{t('export.bundleFolderName')}</IconLabel>
               </span>
-              <input
-                aria-label={t('export.bundleFolderName')}
-                placeholder={defaultBundleFolderName(deckName)}
-                value={bundleFolderName}
-                onChange={(event) => {
-                  setBundleFolderNameEdited(true)
-                  setBundleFolderName(event.target.value)
-                }}
-              />
-            </label>
-          ) : null}
+              <span className="export-field-description">
+                {t('export.bundleFolderNameDescription')}
+              </span>
+            </span>
+            <input
+              aria-label={t('export.bundleFolderName')}
+              disabled={!showBundleFolderField}
+              placeholder={defaultBundleFolderName(deckName)}
+              value={bundleFolderName}
+              onChange={(event) => {
+                setBundleFolderNameEdited(true)
+                setBundleFolderName(event.target.value)
+              }}
+            />
+          </label>
           <label className="export-field">
             <span className="export-field-copy">
               <span className="export-field-label">
