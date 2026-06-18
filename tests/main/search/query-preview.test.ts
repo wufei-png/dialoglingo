@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  HIGHLIGHT_START,
+  markHighlightedText
+} from '../../../src/shared/highlight'
+import {
   createPreviewQuery,
   createWorkbookPreviewQuery
 } from '../../../src/main/search/queryPreview'
@@ -113,7 +117,7 @@ describe('createPreviewQuery', () => {
 
     const preview = createPreviewQuery(db)('s1', 'workbook', 'titles')
 
-    expect(preview.snippet?.snippet).toContain('<mark>')
+    expect(preview.snippet?.snippet).toContain(HIGHLIGHT_START)
     expect(preview.snippet?.snippet).toContain('workbook')
   })
 
@@ -127,7 +131,7 @@ describe('createPreviewQuery', () => {
 
     const preview = createPreviewQuery(db)('s1', '日志-监', 'titles')
 
-    expect(preview.snippet?.snippet).toContain('<mark>日志监</mark>')
+    expect(preview.snippet?.snippet).toContain(markHighlightedText('日志监'))
   })
 
   it('uses the short-query fallback when building preview snippets', () => {
@@ -140,7 +144,7 @@ describe('createPreviewQuery', () => {
 
     const preview = createPreviewQuery(db)('s1', '日志', 'transcript')
 
-    expect(preview.snippet?.snippet).toContain('<mark>日志</mark>')
+    expect(preview.snippet?.snippet).toContain(markHighlightedText('日志'))
   })
 
   it('keeps full preview turns while highlighting matching transcript text', () => {
@@ -154,7 +158,7 @@ describe('createPreviewQuery', () => {
     const preview = createPreviewQuery(db)('s1', 'workbook', 'transcript')
 
     expect(preview.turns[0].text).toBe(
-      'first line before <mark>workbook</mark>\nsecond line after <mark>workbook</mark>'
+      `first line before ${markHighlightedText('workbook')}\nsecond line after ${markHighlightedText('workbook')}`
     )
     expect(preview.turns[0].text).toContain('first line before')
     expect(preview.turns[0].text).toContain('second line after')
@@ -191,6 +195,20 @@ describe('createPreviewQuery', () => {
     ])
   })
 
+  it('does not treat literal mark tags in transcript text as search highlights', () => {
+    const db = createTestDb()
+    insertPreviewSession(db, {
+      id: 's1',
+      title: '调研 title match',
+      searchText: 'Use the literal `<mark>` token when explaining render internals.'
+    })
+
+    const preview = createPreviewQuery(db)('s1', '调研', 'all')
+
+    expect(preview.turns[0].text).toContain('`<mark>` token')
+    expect(preview.turns[0].text).not.toContain(HIGHLIGHT_START)
+  })
+
   it('returns full workbook source turns and highlights the matching source span', () => {
     const db = createTestDb()
     insertPreviewSession(db, {
@@ -221,7 +239,9 @@ describe('createPreviewQuery', () => {
     })
 
     expect(preview.turns).toHaveLength(2)
-    expect(preview.turns[1].text).toContain('<mark>geometric registration</mark>')
+    expect(preview.turns[1].text).toContain(
+      markHighlightedText('geometric registration')
+    )
     expect(preview.matchedBy).toBe('source-span')
   })
 
@@ -239,7 +259,7 @@ describe('createPreviewQuery', () => {
       highlightText: 'workbook context'
     })
 
-    expect(preview.turns[0].text).toContain('<mark>workbook context</mark>')
+    expect(preview.turns[0].text).toContain(markHighlightedText('workbook context'))
     expect(preview.matchedBy).toBe('highlight-text')
   })
 })

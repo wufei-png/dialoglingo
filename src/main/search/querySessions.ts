@@ -1,5 +1,10 @@
 import type Database from 'better-sqlite3'
 import {
+  HIGHLIGHT_END,
+  HIGHLIGHT_START,
+  hasHighlightMarker
+} from '../../shared/highlight'
+import {
   buildHighlightedSnippet,
   buildScopedFtsMatchQuery,
   buildScopedLikeCondition,
@@ -20,6 +25,7 @@ export type SearchInput = {
 export type SearchRow = {
   sessionId: string
   title: string
+  titleSnippet: string | null
   snippet: string | null
   sourceType: 'codex' | 'claude' | 'opencode'
   projectPath: string | null
@@ -77,7 +83,7 @@ function pickFtsSnippet(row: FtsSearchRow, scope: QueryScope) {
 
   return (
     [row.textSnippet, row.previewSnippet, row.titleSnippet].find((snippet) =>
-      snippet?.includes('<mark>')
+      hasHighlightMarker(snippet)
     ) ??
     row.previewSnippet ??
     row.textSnippet ??
@@ -103,6 +109,24 @@ function pickLikeSnippet(row: LikeSearchRow, scope: QueryScope, variants: string
   return buildHighlightedSnippet(source ?? row.preview, variants)
 }
 
+function buildTitleSnippet(
+  title: string,
+  scope: QueryScope,
+  variants: string[],
+  ftsTitleSnippet?: string | null
+) {
+  if (scope === 'transcript') {
+    return null
+  }
+
+  if (hasHighlightMarker(ftsTitleSnippet)) {
+    return ftsTitleSnippet ?? null
+  }
+
+  const snippet = buildHighlightedSnippet(title, variants, 70)
+  return hasHighlightMarker(snippet) ? snippet : null
+}
+
 export function createSessionSearch(db: Database.Database) {
   return (input: SearchInput): SearchRow[] => {
     const plan = buildSearchQueryPlan(input.query)
@@ -115,6 +139,7 @@ export function createSessionSearch(db: Database.Database) {
             select
               s.id as sessionId,
               s.title as title,
+              null as titleSnippet,
               s.source_type as sourceType,
               s.project_id as projectPath,
               s.updated_at as updatedAt,
@@ -153,6 +178,7 @@ export function createSessionSearch(db: Database.Database) {
 
       return rows.map(({ searchText: _searchText, ...row }) => ({
         ...row,
+        titleSnippet: buildTitleSnippet(row.title, input.scope, plan.variants),
         snippet: pickLikeSnippet({ ...row, searchText: _searchText }, input.scope, plan.variants)
       }))
     }
@@ -167,9 +193,9 @@ export function createSessionSearch(db: Database.Database) {
             s.project_id as projectPath,
             s.updated_at as updatedAt,
             s.preview as preview,
-            snippet(session_search, 1, '<mark>', '</mark>', ' … ', 12) as titleSnippet,
-            snippet(session_search, 2, '<mark>', '</mark>', ' … ', 12) as previewSnippet,
-            snippet(session_search, 3, '<mark>', '</mark>', ' … ', 12) as textSnippet
+            snippet(session_search, 1, '${HIGHLIGHT_START}', '${HIGHLIGHT_END}', ' … ', 12) as titleSnippet,
+            snippet(session_search, 2, '${HIGHLIGHT_START}', '${HIGHLIGHT_END}', ' … ', 12) as previewSnippet,
+            snippet(session_search, 3, '${HIGHLIGHT_START}', '${HIGHLIGHT_END}', ' … ', 12) as textSnippet
           from session_search
           join sessions s on s.id = session_search.session_id
           where session_search match ?
@@ -182,6 +208,12 @@ export function createSessionSearch(db: Database.Database) {
     return rows.map((row) => ({
       sessionId: row.sessionId,
       title: row.title,
+      titleSnippet: buildTitleSnippet(
+        row.title,
+        input.scope,
+        plan.variants,
+        row.titleSnippet
+      ),
       snippet: pickFtsSnippet(row, input.scope),
       sourceType: row.sourceType,
       projectPath: row.projectPath,

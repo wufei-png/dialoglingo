@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { HIGHLIGHT_START, markHighlightedText } from '../../../src/shared/highlight'
 import { createSessionSearch } from '../../../src/main/search/querySessions'
 import { createTestDb } from '../testDb'
 
@@ -342,7 +343,8 @@ describe('createSessionSearch', () => {
 
     expect(fullRows.map((row) => row.sessionId)).toEqual(['s1'])
     expect(partialRows.map((row) => row.sessionId)).toEqual(['s1'])
-    expect(partialRows[0].snippet).toContain('<mark>日志监</mark>')
+    expect(partialRows[0].snippet).toContain(markHighlightedText('日志监'))
+    expect(partialRows[0].titleSnippet).toContain(markHighlightedText('日志监'))
   })
 
   it('normalizes everyday spaces and punctuation in search input', () => {
@@ -363,9 +365,9 @@ describe('createSessionSearch', () => {
       includeArchived: false
     }
 
-    expect(search({ ...baseInput, query: '日志 监' }).map((row) => row.sessionId)).toEqual([
-      's1'
-    ])
+    const spacedRows = search({ ...baseInput, query: '日志 监' })
+    expect(spacedRows.map((row) => row.sessionId)).toEqual(['s1'])
+    expect(spacedRows[0].titleSnippet).toContain(HIGHLIGHT_START)
     expect(search({ ...baseInput, query: '日志-监' }).map((row) => row.sessionId)).toEqual([
       's1'
     ])
@@ -429,9 +431,11 @@ describe('createSessionSearch', () => {
     const transcriptRows = search({ ...baseInput, scope: 'transcript' })
 
     expect(titleRows.map((row) => row.sessionId)).toEqual(['title-short'])
-    expect(titleRows[0].snippet).toContain('<mark>日志</mark>')
+    expect(titleRows[0].snippet).toContain(markHighlightedText('日志'))
+    expect(titleRows[0].titleSnippet).toContain(markHighlightedText('日志'))
     expect(transcriptRows.map((row) => row.sessionId)).toEqual([
       'transcript-short'
     ])
+    expect(transcriptRows[0].titleSnippet).toBeNull()
   })
 })

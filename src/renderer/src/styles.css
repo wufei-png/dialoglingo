@@ -684,6 +684,8 @@ button {
   line-height: 1.6;
 }
 
+.search-preview-header h2 mark,
+.session-row-button mark,
 .search-preview-body mark {
   border-radius: 4px;
   background: #fde68a;

@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
+import type { TFunction } from 'i18next'
+import { useTranslation } from 'react-i18next'
+import { countHighlightMarkers } from '../../../../shared/highlight'
+import { renderMarkedText } from '../../lib/renderMarkedText'
 
 type PreviewTurn = {
   seq: number
@@ -9,6 +13,7 @@ type PreviewTurn = {
 
 type PreviewProps = {
   sessionTitle: string
+  sessionTitleSnippet?: string | null
   turns: PreviewTurn[]
   fallbackPreview: string
   enableHighlights: boolean
@@ -21,64 +26,23 @@ type PreviewProps = {
   className?: string
 }
 
-function renderPreview(
-  value: string,
-  enableHighlights: boolean,
-  activeMatchIndex: number,
-  matchIndexRef: { current: number }
-): ReactNode[] {
-  if (!enableHighlights) {
-    return [value]
-  }
-
-  const parts = value.split(/(<mark>|<\/mark>)/)
-  let highlighted = false
-  const rendered: ReactNode[] = []
-
-  parts.forEach((part, index) => {
-    if (part === '<mark>') {
-      highlighted = true
-      return
-    }
-    if (part === '</mark>') {
-      highlighted = false
-      matchIndexRef.current += 1
-      return
-    }
-    if (!part) {
-      return
-    }
-
-    if (highlighted) {
-      const currentIndex = matchIndexRef.current
-      rendered.push(
-        <mark
-          key={`${index}-${currentIndex}`}
-          className={currentIndex === activeMatchIndex ? 'is-active' : undefined}
-          data-match-index={currentIndex}
-        >
-          {part}
-        </mark>
-      )
-      return
-    }
-
-    rendered.push(part)
-  })
-
-  return rendered
-}
-
 function getTurnClassName(role: PreviewTurn['role']) {
   return role === 'user' ? 'preview-turn is-user' : 'preview-turn is-assistant'
 }
 
-function scrollMatchIntoPreview(body: HTMLElement, active: Element) {
-  const container = body.closest('.search-preview')
-  if (!(container instanceof HTMLElement)) {
-    return
+function getTurnRoleLabel(role: PreviewTurn['role'], t: TFunction) {
+  if (role === 'user') {
+    return t('preview.roles.user')
   }
 
+  if (role === 'assistant') {
+    return t('preview.roles.assistant')
+  }
+
+  return role
+}
+
+function scrollMatchIntoPreview(container: HTMLElement, active: Element) {
   const containerRect = container.getBoundingClientRect()
   const activeRect = active.getBoundingClientRect()
   const nextTop =
@@ -95,20 +59,21 @@ function scrollMatchIntoPreview(body: HTMLElement, active: Element) {
 }
 
 export function SessionPreviewPane(props: PreviewProps) {
-  const bodyRef = useRef<HTMLElement | null>(null)
+  const { t } = useTranslation()
+  const rootRef = useRef<HTMLElement | null>(null)
+  const titleMatchCount = countHighlightMarkers(props.sessionTitleSnippet)
   const renderedPreview = useMemo(
     () => {
-      const matchIndexRef = { current: 0 }
+      const matchIndexRef = { current: titleMatchCount }
 
       if (props.turns.length === 0) {
         return (
           <div className="preview-snippet">
-            {renderPreview(
-              props.fallbackPreview,
-              props.enableHighlights,
-              props.activeMatchIndex,
+            {renderMarkedText(props.fallbackPreview, {
+              enabled: props.enableHighlights,
+              activeMatchIndex: props.activeMatchIndex,
               matchIndexRef
-            )}
+            })}
           </div>
         )
       }
@@ -116,54 +81,80 @@ export function SessionPreviewPane(props: PreviewProps) {
       return props.turns.map((turn) => (
         <div key={turn.seq} className={getTurnClassName(turn.role)}>
           <div className="preview-bubble">
-            <p className="preview-turn-role">{turn.role}</p>
+            <p className="preview-turn-role">{getTurnRoleLabel(turn.role, t)}</p>
             <div className="preview-turn-text">
-              {renderPreview(
-                turn.text,
-                props.enableHighlights,
-                props.activeMatchIndex,
+              {renderMarkedText(turn.text, {
+                enabled: props.enableHighlights,
+                activeMatchIndex: props.activeMatchIndex,
                 matchIndexRef
-              )}
+              })}
             </div>
           </div>
         </div>
       ))
     },
-    [props.activeMatchIndex, props.enableHighlights, props.fallbackPreview, props.turns]
+    [
+      props.activeMatchIndex,
+      props.enableHighlights,
+      props.fallbackPreview,
+      props.turns,
+      t,
+      titleMatchCount
+    ]
+  )
+  const renderedTitle = useMemo(
+    () =>
+      renderMarkedText(props.sessionTitleSnippet ?? props.sessionTitle, {
+        enabled: Boolean(props.sessionTitleSnippet),
+        activeMatchIndex: props.activeMatchIndex,
+        matchIndexRef: { current: 0 }
+      }),
+    [props.activeMatchIndex, props.sessionTitle, props.sessionTitleSnippet]
   )
 
   useEffect(() => {
-    const body = bodyRef.current
-    const active = body?.querySelector('mark.is-active')
-    if (!body || !active) {
+    const root = rootRef.current
+    const active = root?.querySelector('mark.is-active')
+    if (!root || !active) {
       return
     }
 
-    scrollMatchIntoPreview(body, active)
-  }, [props.activeMatchIndex, props.enableHighlights, props.fallbackPreview, props.turns])
+    scrollMatchIntoPreview(root, active)
+  }, [
+    props.activeMatchIndex,
+    props.enableHighlights,
+    props.fallbackPreview,
+    props.sessionTitleSnippet,
+    props.turns
+  ])
 
   return (
-    <section className={['search-preview', props.className].filter(Boolean).join(' ')}>
+    <section
+      className={['search-preview', props.className].filter(Boolean).join(' ')}
+      ref={rootRef}
+    >
       {props.matchCount > 1 ? (
-        <div className="match-nav" aria-label="Search matches">
-          <button type="button" aria-label="Previous match" onClick={props.onPrevMatch}>
+        <div className="match-nav" aria-label={t('preview.searchMatches')}>
+          <button type="button" aria-label={t('preview.previousMatch')} onClick={props.onPrevMatch}>
             <span className="match-nav-icon is-prev" aria-hidden="true" />
           </button>
-          <button type="button" aria-label="Next match" onClick={props.onNextMatch}>
+          <button type="button" aria-label={t('preview.nextMatch')} onClick={props.onNextMatch}>
             <span className="match-nav-icon is-next" aria-hidden="true" />
           </button>
         </div>
       ) : null}
       <header className="search-preview-header">
         <div>
-          <p className="search-preview-kicker">{props.kicker ?? 'Normalized Preview'}</p>
-          <h2>{props.sessionTitle}</h2>
+          <p className="search-preview-kicker">
+            {props.kicker ?? t('preview.normalizedPreview')}
+          </p>
+          <h2>{renderedTitle}</h2>
           {props.headerMeta ? (
             <div className="search-preview-meta">{props.headerMeta}</div>
           ) : null}
         </div>
       </header>
-      <article className="search-preview-body" ref={bodyRef}>
+      <article className="search-preview-body">
         {renderedPreview}
       </article>
     </section>

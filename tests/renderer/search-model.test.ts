@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { markHighlightedText } from '../../src/shared/highlight'
 import {
   PLATFORM_OPTIONS,
   applySessionSelection,
@@ -98,7 +99,7 @@ describe('searchModel', () => {
     ).toBe(true)
   })
 
-  it('groups by platform and keeps navigation rows title-only', () => {
+  it('groups by platform and keeps navigation rows free of transcript snippets', () => {
     const groups = groupSessions({
       groupBy: 'platform',
       projects,
@@ -119,12 +120,34 @@ describe('searchModel', () => {
           {
             sessionId: 's1',
             title: 'A very long Codex title',
+            titleSnippet: null,
             selected: false,
             focused: true
           }
         ]
       }
     ])
+    expect('snippet' in groups[0].rows[0]).toBe(false)
+  })
+
+  it('carries highlighted title snippets into navigation rows', () => {
+    const groups = groupSessions({
+      groupBy: 'platform',
+      projects,
+      focusedSessionId: null,
+      selectedSessionIds: new Set(),
+      collapsedGroupIds: new Set(),
+      sessions: [
+        {
+          ...sessions[0],
+          titleSnippet: `A very long ${markHighlightedText('Codex')} title`
+        }
+      ]
+    })
+
+    expect(groups[0].rows[0].titleSnippet).toBe(
+      `A very long ${markHighlightedText('Codex')} title`
+    )
     expect('snippet' in groups[0].rows[0]).toBe(false)
   })
 

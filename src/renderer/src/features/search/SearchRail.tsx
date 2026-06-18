@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MeasuredCollapse } from '../../components/MeasuredCollapse'
 import { GenerateWorkbookSheet } from './GenerateWorkbookSheet'
 import {
@@ -27,14 +28,7 @@ type GenerationPromptPreview = {
   candidateCount: number
 }
 
-const SEARCH_SCOPE_OPTIONS: Array<{
-  value: 'all' | 'titles' | 'transcript'
-  label: string
-}> = [
-  { value: 'all', label: 'Search in all' },
-  { value: 'titles', label: 'Search in titles' },
-  { value: 'transcript', label: 'Search in transcripts' }
-]
+const SEARCH_SCOPE_VALUES = ['all', 'titles', 'transcript'] as const
 
 function CollapsibleFilterSection(props: {
   title: string
@@ -95,11 +89,21 @@ export function SearchRail(props: {
   onPromptPreview: (sessionIds: string[]) => Promise<GenerationPromptPreview>
   onGenerate: (sessionIds: string[], promptOverride: string | null) => Promise<void>
 }) {
+  const { t } = useTranslation()
   const [sheetOpen, setSheetOpen] = useState(false)
   const selectedSessionIds = useMemo(
     () => [...props.selectedSessionIds],
     [props.selectedSessionIds]
   )
+  const searchScopeOptions = SEARCH_SCOPE_VALUES.map((value) => ({
+    value,
+    label:
+      value === 'all'
+        ? t('search.searchInAll')
+        : value === 'titles'
+          ? t('search.searchInTitles')
+          : t('search.searchInTranscripts')
+  }))
 
   const platformSummary = PLATFORM_OPTIONS.map((platform) => ({
     label: PLATFORM_LABELS[platform],
@@ -137,12 +141,13 @@ export function SearchRail(props: {
     count: group.rows.filter((row) => row.selected).length
   }))
   const groupByOptions: Array<{ value: SearchGroupBy; label: string }> = [
-    { value: 'platform', label: 'Platform' },
-    { value: 'time', label: 'Time range' },
-    { value: 'project', label: 'Project' }
+    { value: 'platform', label: t('search.groupByPlatform') },
+    { value: 'time', label: t('search.groupByTime') },
+    { value: 'project', label: t('search.groupByProject') }
   ]
   const activeGroupByLabel =
-    groupByOptions.find((option) => option.value === props.groupBy)?.label ?? 'Platform'
+    groupByOptions.find((option) => option.value === props.groupBy)?.label ??
+    t('search.groupByPlatform')
   const filteredSessionIds = props.sessions.map((session) => session.sessionId)
   const allFilteredSessionsSelected = areAllSessionIdsSelected(
     filteredSessionIds,
@@ -153,16 +158,16 @@ export function SearchRail(props: {
   return (
     <aside className="search-rail">
       <div className="search-stack">
-        <section className="filter-area" aria-label="Filter area">
-          <div className="filter-area-label">Filter area</div>
+        <section className="filter-area" aria-label={t('search.filterArea')}>
+          <div className="filter-area-label">{t('search.filterArea')}</div>
           <div className="search-box">
             <input
-              placeholder="Type keywords..."
+              placeholder={t('search.typeKeywords')}
               value={props.query}
               onChange={(event) => props.onQueryChange(event.currentTarget.value)}
             />
             <select
-              aria-label="Search scope"
+              aria-label={t('search.searchScope')}
               value={props.queryScope}
               onChange={(event) =>
                 props.onQueryScopeChange(
@@ -170,7 +175,7 @@ export function SearchRail(props: {
                 )
               }
             >
-              {SEARCH_SCOPE_OPTIONS.map((option) => (
+              {searchScopeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -180,7 +185,7 @@ export function SearchRail(props: {
 
           <div className="search-filters">
             <select
-              aria-label="Time range"
+              aria-label={t('search.timeRange')}
               value={props.timeRange}
               onChange={(event) =>
                 props.onTimeRangeChange(
@@ -188,13 +193,13 @@ export function SearchRail(props: {
                 )
               }
             >
-              <option value="last-7-days">Last 7 days</option>
-              <option value="last-30-days">Last 30 days</option>
-              <option value="all-time">All time</option>
+              <option value="last-7-days">{t('search.last7Days')}</option>
+              <option value="last-30-days">{t('search.last30Days')}</option>
+              <option value="all-time">{t('search.allTime')}</option>
             </select>
 
             <CollapsibleFilterSection
-              title="Platform"
+              title={t('search.platform')}
               summary={`${props.platformFilter.length}/${PLATFORM_OPTIONS.length}`}
             >
               <div className="filter-options">
@@ -216,7 +221,7 @@ export function SearchRail(props: {
             </CollapsibleFilterSection>
 
             <CollapsibleFilterSection
-              title="Projects"
+              title={t('search.projects')}
               summary={`${selectedProjectCount}/${props.projects.length}`}
             >
               <div className="filter-options">
@@ -236,11 +241,11 @@ export function SearchRail(props: {
 
           <div className="search-toolbar">
             <CollapsibleFilterSection
-              title="Group by"
+              title={t('search.groupBy')}
               summary={activeGroupByLabel}
               defaultExpanded
             >
-              <div className="group-by-options" role="group" aria-label="Group by">
+              <div className="group-by-options" role="group" aria-label={t('search.groupBy')}>
                 {groupByOptions.map((option) => (
                   <button
                     key={option.value}
@@ -269,7 +274,7 @@ export function SearchRail(props: {
                   )
                 }
               >
-                {allFilteredSessionsSelected ? '全不选' : '全选'}
+                {allFilteredSessionsSelected ? t('search.deselectAll') : t('search.selectAll')}
               </button>
             </div>
           </div>
@@ -286,22 +291,22 @@ export function SearchRail(props: {
 
       <footer className="search-footer">
         <div>
-          <p className="search-footer-label">Selected</p>
-          <strong>{props.selectedSessionIds.size} sessions</strong>
+          <p className="search-footer-label">{t('search.selected')}</p>
+          <strong>{t('search.sessionsCount', { count: props.selectedSessionIds.size })}</strong>
         </div>
         <div className="search-footer-actions">
           <button type="button" onClick={props.onRescan}>
-            Rescan
+            {t('search.rescan')}
           </button>
           <button type="button" onClick={() => setSheetOpen(true)}>
-            Generate Workbook
+            {t('search.generateWorkbook')}
           </button>
         </div>
         {props.generationError ? (
           <p className="search-footer-error">{props.generationError}</p>
         ) : null}
         <button className="settings-utility-button" type="button" onClick={props.onOpenSettings}>
-          Settings
+          {t('common.settings')}
         </button>
       </footer>
 

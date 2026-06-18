@@ -1,3 +1,5 @@
+import { markHighlightedText } from '../../shared/highlight'
+
 export type QueryScope = 'all' | 'titles' | 'transcript'
 
 export type SearchQueryPlan = {
@@ -107,7 +109,7 @@ export function buildHighlightedSnippet(
   const highlighted = value.slice(match.index, match.index + match.variant.length)
   const after = value.slice(match.index + match.variant.length, end)
 
-  return `${prefix}${before}<mark>${highlighted}</mark>${after}${suffix}`
+  return `${prefix}${before}${markHighlightedText(highlighted)}${after}${suffix}`
 }
 
 function findNextVariantMatch(
@@ -147,7 +149,9 @@ export function buildHighlightedText(value: string, variants: string[]) {
     }
 
     highlighted += value.slice(cursor, match.index)
-    highlighted += `<mark>${value.slice(match.index, match.index + match.variant.length)}</mark>`
+    highlighted += markHighlightedText(
+      value.slice(match.index, match.index + match.variant.length)
+    )
     cursor = match.index + match.variant.length
   }
 

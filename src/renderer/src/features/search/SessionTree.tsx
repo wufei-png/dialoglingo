@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTranslation } from 'react-i18next'
 import {
   areAllSessionIdsSelected,
   flattenSessionTree,
   type SessionGroup
 } from './searchModel'
+import { renderMarkedText } from '../../lib/renderMarkedText'
 
 type ContextMenuState = {
   groupId: string
@@ -19,6 +21,7 @@ export function SessionTree(props: {
   onFocusSession: (sessionId: string) => void
   onToggleGroup: (groupId: string) => void
 }) {
+  const { t } = useTranslation()
   const parentRef = useRef<HTMLDivElement | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const totalRows = props.groups.reduce((count, group) => count + group.rows.length, 0)
@@ -67,7 +70,7 @@ export function SessionTree(props: {
   }, [contextMenu])
 
   if (totalRows === 0) {
-    return <div className="session-empty-state">No sessions</div>
+    return <div className="session-empty-state">{t('search.noSessions')}</div>
   }
 
   return (
@@ -132,7 +135,11 @@ export function SessionTree(props: {
                   title={item.row.title}
                   onClick={() => props.onFocusSession(item.row.sessionId)}
                 >
-                  <span>{item.row.title}</span>
+                  <span className="session-row-title">
+                    {renderMarkedText(item.row.titleSnippet ?? item.row.title, {
+                      enabled: Boolean(item.row.titleSnippet)
+                    })}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -144,10 +151,14 @@ export function SessionTree(props: {
                   aria-pressed={item.row.selected}
                   aria-label={
                     item.row.selected
-                      ? `Deselect ${item.row.title}`
-                      : `Select ${item.row.title}`
+                      ? t('search.deselectSession', { title: item.row.title })
+                      : t('search.selectSession', { title: item.row.title })
                   }
-                  title={item.row.selected ? 'Deselect session' : 'Select session'}
+                  title={
+                    item.row.selected
+                      ? t('search.deselectSessionTitle')
+                      : t('search.selectSessionTitle')
+                  }
                   onClick={() => props.onToggleSession(item.row.sessionId)}
                 >
                   <span className="selection-button-check" aria-hidden="true" />
@@ -175,7 +186,7 @@ export function SessionTree(props: {
               setContextMenu(null)
             }}
           >
-            {contextGroupAllSelected ? '取消全选本组' : '全选本组'}
+            {contextGroupAllSelected ? t('search.deselectGroup') : t('search.selectGroup')}
           </button>
         </div>
       ) : null}

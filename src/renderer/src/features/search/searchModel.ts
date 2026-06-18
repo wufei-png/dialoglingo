@@ -21,6 +21,7 @@ export const PLATFORM_LABELS: Record<SearchPlatform, string> = {
 type SearchSession = {
   sessionId: string
   title: string
+  titleSnippet?: string | null
   snippet: string | null
   sourceType: SearchPlatform
   projectPath: string | null
@@ -36,6 +37,7 @@ export type SessionGroup = {
   rows: Array<{
     sessionId: string
     title: string
+    titleSnippet: string | null
     selected: boolean
     focused: boolean
   }>
@@ -59,6 +61,12 @@ export type ProjectOption = {
   name: string
   localPath: string
   sourcePlatforms: string[]
+}
+
+export type SearchGroupLabels = {
+  platformLabels: Record<SearchPlatform, string>
+  unassignedProject: string
+  unknownDate: string
 }
 
 export function togglePlatformFilter(
@@ -129,16 +137,20 @@ export function applySessionSelection(
   return next
 }
 
-function getProjectLabel(projectPath: string | null, projects: ProjectOption[]) {
+function getProjectLabel(
+  projectPath: string | null,
+  projects: ProjectOption[],
+  labels: SearchGroupLabels
+) {
   if (!projectPath) {
-    return 'Unassigned'
+    return labels.unassignedProject
   }
 
   return projects.find((project) => project.id === projectPath)?.name ?? projectPath
 }
 
-function toDayLabel(updatedAt: string) {
-  return updatedAt.slice(0, 10) || 'Unknown date'
+function toDayLabel(updatedAt: string, labels: SearchGroupLabels) {
+  return updatedAt.slice(0, 10) || labels.unknownDate
 }
 
 function compareByUpdatedDesc(left: SearchSession, right: SearchSession) {
@@ -156,7 +168,14 @@ export function groupSessions(input: {
   selectedSessionIds: Set<string>
   focusedSessionId: string | null
   collapsedGroupIds: Set<string>
+  labels?: SearchGroupLabels
 }): SessionGroup[] {
+  const labels =
+    input.labels ?? {
+      platformLabels: PLATFORM_LABELS,
+      unassignedProject: 'Unassigned',
+      unknownDate: 'Unknown date'
+    }
   const buckets = new Map<string, { label: string; sessions: SearchSession[] }>()
 
   for (const session of input.sessions) {
@@ -164,14 +183,14 @@ export function groupSessions(input: {
       input.groupBy === 'platform'
         ? session.sourceType
         : input.groupBy === 'time'
-          ? toDayLabel(session.updatedAt)
+          ? toDayLabel(session.updatedAt, labels)
           : session.projectPath ?? 'unassigned'
     const label =
       input.groupBy === 'platform'
-        ? PLATFORM_LABELS[session.sourceType]
+        ? labels.platformLabels[session.sourceType]
         : input.groupBy === 'time'
           ? id
-          : getProjectLabel(session.projectPath, input.projects)
+          : getProjectLabel(session.projectPath, input.projects, labels)
 
     const bucket = buckets.get(id)
     if (bucket) {
@@ -196,6 +215,7 @@ export function groupSessions(input: {
         .map((session) => ({
           sessionId: session.sessionId,
           title: session.title,
+          titleSnippet: session.titleSnippet ?? null,
           selected: input.selectedSessionIds.has(session.sessionId),
           focused: input.focusedSessionId === session.sessionId
         }))

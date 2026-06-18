@@ -1,5 +1,11 @@
 import type Database from 'better-sqlite3'
 import {
+  HIGHLIGHT_END,
+  HIGHLIGHT_START,
+  hasHighlightMarker,
+  markHighlightedText
+} from '../../shared/highlight'
+import {
   buildHighlightedText,
   buildHighlightedSnippet,
   buildScopedFtsMatchQuery,
@@ -51,11 +57,11 @@ function snippetColumns(scope: QueryScope) {
 }
 
 function hasHighlight(value: string) {
-  return value.includes('<mark>')
+  return hasHighlightMarker(value)
 }
 
 function markWholeText(value: string) {
-  return `<mark>${value}</mark>`
+  return markHighlightedText(value)
 }
 
 function highlightText(value: string, highlightText: string) {
@@ -143,7 +149,7 @@ export function createPreviewQuery(db: Database.Database) {
       const row = db
         .prepare(
           `
-            select snippet(session_search, ${column}, '<mark>', '</mark>', ' … ', 20) as snippet
+            select snippet(session_search, ${column}, '${HIGHLIGHT_START}', '${HIGHLIGHT_END}', ' … ', 20) as snippet
             from session_search
             where session_id = ? and session_search match ?
             limit 1
@@ -153,7 +159,7 @@ export function createPreviewQuery(db: Database.Database) {
         | { snippet?: string }
         | undefined
 
-      if (row?.snippet?.includes('<mark>')) {
+      if (hasHighlightMarker(row?.snippet)) {
         snippet = row
         break
       }

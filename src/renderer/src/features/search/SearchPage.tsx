@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import type { ScanEvent } from '../../../../shared/ipc/events'
 import type { Settings } from '../../../../shared/schemas/settings'
+import { countHighlightMarkers } from '../../../../shared/highlight'
 import { ResizableSplitPane } from '../../components/ResizableSplitPane'
 import { trpc } from '../../lib/trpc'
 import {
+  PLATFORM_LABELS,
   PLATFORM_OPTIONS,
   applySessionSelection,
   buildSessionSearchInput,
@@ -21,6 +24,7 @@ import { SessionPreviewPane } from './SessionPreviewPane'
 type SearchSession = {
   sessionId: string
   title: string
+  titleSnippet: string | null
   snippet: string | null
   sourceType: 'codex' | 'claude' | 'opencode'
   projectPath: string | null
@@ -57,10 +61,6 @@ function toTimeRange(preset: TimeRangePreset) {
   }
 }
 
-function countHighlights(value: string) {
-  return value.match(/<mark>/g)?.length ?? 0
-}
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
@@ -80,6 +80,7 @@ export function SearchPage(props: {
   onOpenSettings: () => void
   onWorkbookReady: (payload: { jobId: string; workbookId: string }) => void
 }) {
+  const { t } = useTranslation()
   const [sessions, setSessions] = useState<SearchSession[]>([])
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null)
@@ -116,6 +117,14 @@ export function SearchPage(props: {
     () => [...selectedProjectIds].sort().join('|'),
     [selectedProjectIds]
   )
+  const searchGroupLabels = useMemo(
+    () => ({
+      platformLabels: PLATFORM_LABELS,
+      unassignedProject: t('search.unassigned'),
+      unknownDate: t('search.unknownDate')
+    }),
+    [t]
+  )
 
   const groups = useMemo(
     () =>
@@ -125,7 +134,8 @@ export function SearchPage(props: {
         groupBy,
         selectedSessionIds,
         focusedSessionId,
-        collapsedGroupIds
+        collapsedGroupIds,
+        labels: searchGroupLabels
       }),
     [
       sessions,
@@ -133,7 +143,8 @@ export function SearchPage(props: {
       groupBy,
       selectedSessionIds,
       focusedSessionId,
-      collapsedGroupIds
+      collapsedGroupIds,
+      searchGroupLabels
     ]
   )
 
@@ -262,16 +273,19 @@ export function SearchPage(props: {
     })()
   }, [focusedSessionId, query, queryScope])
 
-  const emptyPreviewText = 'Select a session from the left to inspect normalized preview text.'
+  const emptyPreviewText = t('search.emptyPreview')
   const previewTurns = preview?.turns ?? []
   const fallbackPreview = preview?.snippet?.snippet || emptyPreviewText
   const visiblePreviewText = getVisiblePreviewText(preview, emptyPreviewText)
   const enablePreviewHighlights = query.trim().length > 0
-  const matchCount = enablePreviewHighlights ? countHighlights(visiblePreviewText) : 0
+  const matchCount = enablePreviewHighlights
+    ? countHighlightMarkers(focusedSession?.titleSnippet) +
+      countHighlightMarkers(visiblePreviewText)
+    : 0
 
   useEffect(() => {
     setActiveMatchIndex(0)
-  }, [visiblePreviewText])
+  }, [focusedSession?.titleSnippet, visiblePreviewText])
 
   function handleGroupByChange(nextGroupBy: SearchGroupBy) {
     setGroupBy(nextGroupBy)
@@ -281,7 +295,8 @@ export function SearchPage(props: {
       groupBy: nextGroupBy,
       selectedSessionIds,
       focusedSessionId,
-      collapsedGroupIds: new Set()
+      collapsedGroupIds: new Set(),
+      labels: searchGroupLabels
     })
     setCollapsedGroupIds(new Set(nextGroups.map((group) => group.id)))
   }
@@ -296,7 +311,7 @@ export function SearchPage(props: {
     setGenerationError(null)
 
     if (sessionIds.length === 0) {
-      setGenerationError('Select at least one session before generating.')
+      setGenerationError(t('search.noSessionSelected'))
       return
     }
 
@@ -384,6 +399,7 @@ export function SearchPage(props: {
       right={(
         <SessionPreviewPane
           sessionTitle={focusedSession?.title ?? 'No session selected'}
+          sessionTitleSnippet={focusedSession?.titleSnippet ?? null}
           turns={previewTurns}
           fallbackPreview={fallbackPreview}
           enableHighlights={enablePreviewHighlights}
