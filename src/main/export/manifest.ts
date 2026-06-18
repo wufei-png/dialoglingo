@@ -10,6 +10,13 @@ export type StudyItemType = 'Expression' | 'Sentence'
 export type WorkbookItemState = 'active' | 'deleted'
 export type FlaggedItemExportPolicy = 'block' | 'warn'
 
+export interface ExportSourceRef {
+  sessionId: string
+  sourceSpanRef: string
+  excerpt: string
+  sourceType?: string | null
+}
+
 export interface ExportPolicyItem {
   id: string
   itemType?: StudyItemType
@@ -22,9 +29,13 @@ export interface ExpressionExportRow extends ExportPolicyItem {
   itemType: 'Expression'
   expression: string
   translation: string
+  gloss?: string
+  context?: string
   explanation?: string
-  example?: string
+  quizPrompt?: string
+  quizAnswer?: string
   source?: string
+  sourceRefs?: ExportSourceRef[]
   tags?: string[]
 }
 
@@ -32,16 +43,31 @@ export interface SentenceExportRow extends ExportPolicyItem {
   itemType: 'Sentence'
   sentence: string
   translation: string
+  focus?: string
+  context?: string
   note?: string
+  quizPrompt?: string
+  quizAnswer?: string
   source?: string
+  sourceRefs?: ExportSourceRef[]
   tags?: string[]
 }
 
+export interface ExportItemCounts {
+  expressions: number
+  sentences: number
+  total: number
+}
+
 export interface ExportRowsInput {
+  workbookId: string
   deckName: string
   direction: ExportDirection
   tagPrefix: string
   generatedAt?: string
+  includedItemTypes?: StudyItemType[]
+  selectedItemCounts?: ExportItemCounts
+  sourcePlatformSummary?: Record<string, number>
   expressions: ExpressionExportRow[]
   sentences: SentenceExportRow[]
 }
@@ -66,15 +92,16 @@ export type ExportPolicyResult<T extends ExportPolicyItem> = T[] & {
 export interface ExportManifest {
   schemaVersion: 1
   appName: 'DialogLingo'
+  workbookId: string
   format: ExportFormat
   deckName: string
   direction: ExportDirection
   generatedAt: string
-  itemCounts: {
-    expressions: number
-    sentences: number
-    total: number
-  }
+  includedItemTypes: StudyItemType[]
+  selectedItemCounts: ExportItemCounts
+  exportedItemCounts: ExportItemCounts
+  itemCounts: ExportItemCounts
+  sourcePlatformSummary: Record<string, number>
   files: string[]
 }
 
@@ -153,14 +180,23 @@ export function createExportManifest(
     files: string[]
   }
 ): ExportManifest {
+  const exportedItemCounts = countExportRows(input.expressions, input.sentences)
+
   return {
     schemaVersion: 1,
     appName: 'DialogLingo',
+    workbookId: input.workbookId,
     format: input.format,
     deckName: input.deckName,
     direction: input.direction,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
-    itemCounts: countExportRows(input.expressions, input.sentences),
+    includedItemTypes: input.includedItemTypes ?? inferIncludedItemTypes(input),
+    selectedItemCounts: input.selectedItemCounts ?? exportedItemCounts,
+    exportedItemCounts,
+    itemCounts: exportedItemCounts,
+    sourcePlatformSummary:
+      input.sourcePlatformSummary ??
+      countSourcePlatforms([...input.expressions, ...input.sentences]),
     files: input.files
   }
 }
@@ -168,7 +204,7 @@ export function createExportManifest(
 export function countExportRows(
   expressions: ExpressionExportRow[],
   sentences: SentenceExportRow[]
-): ExportManifest['itemCounts'] {
+): ExportItemCounts {
   return {
     expressions: expressions.length,
     sentences: sentences.length,
@@ -263,4 +299,30 @@ function uniqueTags(tags: string[]): string[] {
   }
 
   return result
+}
+
+function inferIncludedItemTypes(input: Pick<ExportRowsInput, 'expressions' | 'sentences'>) {
+  const types: StudyItemType[] = []
+  if (input.expressions.length > 0) {
+    types.push('Expression')
+  }
+  if (input.sentences.length > 0) {
+    types.push('Sentence')
+  }
+  return types
+}
+
+function countSourcePlatforms(
+  rows: Array<ExpressionExportRow | SentenceExportRow>
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+
+  for (const row of rows) {
+    for (const ref of row.sourceRefs ?? []) {
+      const sourceType = ref.sourceType?.trim() || 'unknown'
+      counts[sourceType] = (counts[sourceType] ?? 0) + 1
+    }
+  }
+
+  return counts
 }

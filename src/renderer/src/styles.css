@@ -1371,6 +1371,77 @@ button {
   background: #fff;
 }
 
+.settings-form label.settings-toggle-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 38px;
+}
+
+.settings-switch-control {
+  position: relative;
+  display: inline-flex;
+  width: 42px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-form .settings-switch-input {
+  position: absolute;
+  inset: 0;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settings-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border: 1px solid rgba(107, 114, 128, 0.34);
+  border-radius: 999px;
+  background: #e5e7eb;
+  box-shadow: inset 0 1px 2px rgba(17, 24, 39, 0.08);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.settings-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(17, 24, 39, 0.12),
+    0 3px 8px rgba(17, 24, 39, 0.12);
+  transition: transform 160ms ease;
+}
+
+.settings-switch-input:checked + .settings-switch {
+  border-color: #111827;
+  background: #111827;
+}
+
+.settings-switch-input:checked + .settings-switch::after {
+  transform: translateX(18px);
+}
+
+.settings-switch-input:focus-visible + .settings-switch {
+  box-shadow:
+    inset 0 1px 2px rgba(17, 24, 39, 0.08),
+    0 0 0 3px rgba(17, 24, 39, 0.16);
+}
+
 .settings-save-message {
   margin: 0;
   color: #047857;

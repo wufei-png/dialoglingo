@@ -5,6 +5,7 @@ import {
   areAllSessionIdsSelected,
   flattenSessionTree,
   groupSessions,
+  resolveSearchBootPlan,
   togglePlatformFilter
 } from '../../src/renderer/src/features/search/searchModel'
 
@@ -49,6 +50,27 @@ describe('searchModel', () => {
       'opencode'
     ])
     expect(togglePlatformFilter(['opencode'], 'codex')).toEqual(['codex', 'opencode'])
+  })
+
+  it('does not request a manual rescan during search boot', () => {
+    const disabled = resolveSearchBootPlan({
+      scanOnLaunch: false,
+      launchPlan: null
+    })
+    const enabled = resolveSearchBootPlan({
+      scanOnLaunch: true,
+      launchPlan: {
+        selectedProjectIds: ['p1'],
+        focusedSessionId: 's1',
+        collapsedGroupIds: ['codex']
+      }
+    })
+
+    expect(disabled.shouldManualRescan).toBe(false)
+    expect(enabled.shouldManualRescan).toBe(false)
+    expect(enabled.selectedProjectIds).toEqual(['p1'])
+    expect(enabled.focusedSessionId).toBe('s1')
+    expect(enabled.collapsedGroupIds).toEqual(['codex'])
   })
 
   it('groups by platform and keeps navigation rows title-only', () => {

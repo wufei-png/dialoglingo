@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const DEFAULT_SPLIT_RATIO = 0.2
+export const DEFAULT_SPLIT_RATIO = 0.3
 export const DEFAULT_WORKBOOK_SPLIT_RATIO = 0.65
 export const MIN_SPLIT_RATIO = 0.16
 export const MAX_SPLIT_RATIO = 0.7

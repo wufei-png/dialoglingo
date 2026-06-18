@@ -117,8 +117,8 @@ Use these notes as current implementation context when maintaining the renderer;
 
 - The section switcher is not a permanent app-wide left sidebar. `Search & Select` and `Workbook` tabs live inside the left pane header and stop at the pane divider.
 - The launch intro copy `Local chat to workbook` appears only on the scan/loading screen. It should not reserve space in the main Search or Workbook surfaces.
-- Search and Workbook both use the same persisted split-pane ratio. The default is compact left / wide right, `1:4` (`ui.splitRatio = 0.2`), with a draggable divider on both sections.
-- Settings is a compact utility reachable from the bottom of the left pane. Its layout control resets the shared split ratio back to `1:4`.
+- Search and Workbook both use the same persisted split-pane ratio. The default is compact left / wide right, `3:7` (`ui.splitRatio = 0.3`), with a draggable divider on both sections.
+- Settings is a compact utility reachable from the bottom of the left pane. Its layout control resets the shared split ratio back to `3:7`.
 - The current Workbook section defaults to an on-demand source drawer, with an optional pinned split-pane source view. Do not assume a permanently reserved source column unless the user explicitly pins it.
 - Search session navigation rows show titles only. Preview/snippet content belongs in the main preview pane, not in the navigation list.
 - Platform filtering is a live data filter. Toggling platform checkboxes updates the rendered session groups and removes hidden sessions from the selected set.

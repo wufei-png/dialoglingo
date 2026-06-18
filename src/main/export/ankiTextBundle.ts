@@ -2,9 +2,11 @@ import {
   buildAnkiTags,
   createExportManifest,
   escapeTsvField,
+  htmlLineBreaks,
   joinHtmlSections,
   type ExportDirection,
   type ExportRowsInput,
+  type ExportSourceRef,
   type ExpressionExportRow,
   type SentenceExportRow,
   type TextBundleOutput
@@ -33,6 +35,10 @@ export interface LegacyAnkiTextBundleInput {
     gloss?: string
     context?: string
     explanation?: string
+    quiz?: string
+    quizPrompt?: string
+    quizAnswer?: string
+    sourceRefs?: ExportSourceRef[]
     tags?: string[]
   }>
   sentenceRows: Array<{
@@ -42,12 +48,17 @@ export interface LegacyAnkiTextBundleInput {
     back?: string
     context?: string
     explanation?: string
+    focus?: string
+    quiz?: string
+    quizPrompt?: string
+    quizAnswer?: string
+    sourceRefs?: ExportSourceRef[]
     tags?: string[]
   }>
 }
 
 export function buildAnkiTextBundle(input: ExportRowsInput): TextBundleOutput {
-  const files = ['expressions.tsv', 'sentences.tsv']
+  const files = ['expression.tsv', 'sentence.tsv', 'README-import.md', 'manifest.json']
   const manifest = createExportManifest({
     ...input,
     format: 'anki-text-bundle',
@@ -58,13 +69,14 @@ export function buildAnkiTextBundle(input: ExportRowsInput): TextBundleOutput {
     manifest,
     files: {
       'manifest.json': JSON.stringify(manifest, null, 2),
-      'expressions.tsv': writeTsv(
-        ['front', 'back', 'tags'],
-        input.expressions.map((row) => expressionToAnkiCard(row, input))
+      'README-import.md': buildAnkiTextBundleReadme(input, manifest.generatedAt),
+      'expression.tsv': writeTsvRows(
+        ['Front', 'Back', 'Gloss', 'Context', 'Explanation', 'Quiz', 'Tags'],
+        input.expressions.map((row) => expressionToAnkiFields(row, input))
       ),
-      'sentences.tsv': writeTsv(
-        ['front', 'back', 'tags'],
-        input.sentences.map((row) => sentenceToAnkiCard(row, input))
+      'sentence.tsv': writeTsvRows(
+        ['Front', 'Back', 'Focus', 'Explanation', 'Quiz', 'Tags'],
+        input.sentences.map((row) => sentenceToAnkiFields(row, input))
       )
     }
   }
@@ -72,29 +84,10 @@ export function buildAnkiTextBundle(input: ExportRowsInput): TextBundleOutput {
 
 export async function writeAnkiTextBundle(
   outputDir: string,
-  input: LegacyAnkiTextBundleInput
+  input: ExportRowsInput | LegacyAnkiTextBundleInput
 ): Promise<TextBundleOutput> {
-  const rowsInput = normalizeLegacyRows(input)
-  const files = ['expression.tsv', 'sentence.tsv']
-  const manifest = createExportManifest({
-    ...rowsInput,
-    format: 'anki-text-bundle',
-    files
-  })
-  const output: TextBundleOutput = {
-    manifest,
-    files: {
-      'manifest.json': JSON.stringify(manifest, null, 2),
-      'expression.tsv': writeTsv(
-        ['front', 'back', 'tags'],
-        rowsInput.expressions.map((row) => expressionToAnkiCard(row, rowsInput))
-      ),
-      'sentence.tsv': writeTsv(
-        ['front', 'back', 'tags'],
-        rowsInput.sentences.map((row) => sentenceToAnkiCard(row, rowsInput))
-      )
-    }
-  }
+  const rowsInput = normalizeRowsInput(input)
+  const output = buildAnkiTextBundle(rowsInput)
 
   await writeBundleFiles(outputDir, output.files)
   return output
@@ -107,9 +100,10 @@ export function expressionToAnkiCard(
   const front = frontForDirection(input.direction, row.expression, row.translation)
   const back = joinHtmlSections([
     backForDirection(input.direction, row.expression, row.translation),
+    row.gloss,
+    row.context ? `Context: ${row.context}` : undefined,
     row.explanation,
-    row.example ? `Example: ${row.example}` : undefined,
-    row.source ? `Source: ${row.source}` : undefined
+    formatQuiz(row.quizPrompt, row.quizAnswer)
   ])
 
   return {
@@ -126,8 +120,10 @@ export function sentenceToAnkiCard(
   const front = frontForDirection(input.direction, row.sentence, row.translation)
   const back = joinHtmlSections([
     backForDirection(input.direction, row.sentence, row.translation),
+    row.focus,
+    row.context ? `Context: ${row.context}` : undefined,
     row.note,
-    row.source ? `Source: ${row.source}` : undefined
+    formatQuiz(row.quizPrompt, row.quizAnswer)
   ])
 
   return {
@@ -137,17 +133,44 @@ export function sentenceToAnkiCard(
   }
 }
 
-function writeTsv(headers: string[], cards: AnkiCard[]): string {
-  const rows = [
+function expressionToAnkiFields(
+  row: ExpressionExportRow,
+  input: Pick<ExportRowsInput, 'direction' | 'tagPrefix'>
+): string[] {
+  return [
+    ankiField(frontForDirection(input.direction, row.expression, row.translation)),
+    ankiField(backForDirection(input.direction, row.expression, row.translation)),
+    ankiField(row.gloss ?? ''),
+    ankiField(row.context ?? ''),
+    ankiField(row.explanation ?? ''),
+    ankiField(formatQuiz(row.quizPrompt, row.quizAnswer)),
+    buildAnkiTags(input.tagPrefix, 'Expression', row.tags).join(' ')
+  ]
+}
+
+function sentenceToAnkiFields(
+  row: SentenceExportRow,
+  input: Pick<ExportRowsInput, 'direction' | 'tagPrefix'>
+): string[] {
+  return [
+    ankiField(frontForDirection(input.direction, row.sentence, row.translation)),
+    ankiField(backForDirection(input.direction, row.sentence, row.translation)),
+    ankiField(row.focus ?? ''),
+    ankiField(row.note ?? ''),
+    ankiField(formatQuiz(row.quizPrompt, row.quizAnswer)),
+    buildAnkiTags(input.tagPrefix, 'Sentence', row.tags).join(' ')
+  ]
+}
+
+function writeTsvRows(headers: string[], bodyRows: string[][]): string {
+  const outputRows = [
     headers,
-    ...cards.map((card) => [
-      escapeTsvField(card.front),
-      escapeTsvField(card.back),
-      escapeTsvField(card.tags.join(' '))
-    ])
+    ...bodyRows
   ]
 
-  return rows.map((row) => row.join('\t')).join('\n')
+  return outputRows
+    .map((row) => row.map(escapeTsvField).join('\t'))
+    .join('\n')
 }
 
 function frontForDirection(direction: ExportDirection, english: string, translation: string): string {
@@ -162,8 +185,32 @@ function backForDirection(direction: ExportDirection, english: string, translati
   return translation
 }
 
+function ankiField(value: string): string {
+  return htmlLineBreaks(value)
+}
+
+function formatQuiz(prompt?: string, answer?: string): string {
+  const sections = [
+    prompt?.trim() ? `Prompt: ${prompt.trim()}` : undefined,
+    answer?.trim() ? `Answer: ${answer.trim()}` : undefined
+  ].filter((section): section is string => Boolean(section))
+
+  return sections.join('\n')
+}
+
+function normalizeRowsInput(
+  input: ExportRowsInput | LegacyAnkiTextBundleInput
+): ExportRowsInput {
+  if ('expressions' in input) {
+    return input
+  }
+
+  return normalizeLegacyRows(input)
+}
+
 function normalizeLegacyRows(input: LegacyAnkiTextBundleInput): ExportRowsInput {
   return {
+    workbookId: input.workbookId,
     deckName: input.deckName ?? input.workbookId,
     direction: input.direction ?? 'bilingual',
     tagPrefix: input.tagPrefix ?? 'dialoglingo',
@@ -173,8 +220,12 @@ function normalizeLegacyRows(input: LegacyAnkiTextBundleInput): ExportRowsInput 
       state: 'active',
       expression: row.front ?? row.source ?? '',
       translation: row.back ?? row.target ?? '',
-      explanation: row.explanation ?? row.gloss,
-      example: row.context,
+      gloss: row.gloss,
+      context: row.context,
+      explanation: row.explanation,
+      quizPrompt: row.quizPrompt ?? row.quiz,
+      quizAnswer: row.quizAnswer,
+      sourceRefs: row.sourceRefs,
       tags: row.tags
     })),
     sentences: input.sentenceRows.map((row, index) => ({
@@ -183,10 +234,32 @@ function normalizeLegacyRows(input: LegacyAnkiTextBundleInput): ExportRowsInput 
       state: 'active',
       sentence: row.front ?? row.source ?? row.context ?? '',
       translation: row.back ?? row.target ?? '',
+      focus: row.focus,
+      context: row.context,
       note: row.explanation,
+      quizPrompt: row.quizPrompt ?? row.quiz,
+      quizAnswer: row.quizAnswer,
+      sourceRefs: row.sourceRefs,
       tags: row.tags
     }))
   }
+}
+
+function buildAnkiTextBundleReadme(input: ExportRowsInput, generatedAt: string): string {
+  return [
+    '# DialogLingo Anki Text Bundle',
+    '',
+    `Workbook: ${input.workbookId}`,
+    `Deck: ${input.deckName}`,
+    `Generated at: ${generatedAt}`,
+    '',
+    'Import expression.tsv with the DialogLingo::Expression note type.',
+    'Import sentence.tsv with the DialogLingo::Sentence note type.',
+    '',
+    'Only active workbook items selected by type are included. Deleted items are not exported. Flagged items follow the export policy configured in DialogLingo.',
+    '',
+    'Source provenance is summarized in manifest.json. The TSV files intentionally contain only Anki note fields.'
+  ].join('\n')
 }
 
 async function writeBundleFiles(outputDir: string, files: Record<string, string>): Promise<void> {

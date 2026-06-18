@@ -65,4 +65,50 @@ describe('createSettingsService', () => {
     })
     expect(service.get()).toEqual(reset)
   })
+
+  it('persists real-backed generation, privacy, and scan settings', () => {
+    const service = createSettingsService(':memory:', { runMigrations: true })
+    const current = service.get()
+
+    const saved = service.save({
+      ...current,
+      generation: {
+        ...current.generation,
+        batchSize: 16,
+        boundedConcurrency: current.generation.boundedConcurrency,
+        maxItemsPerSession: 12,
+        typeBalanceProfile: {
+          targetExpression: 0.7,
+          targetSentence: 0.3,
+          lambda: 0.25
+        }
+      },
+      privacy: {
+        ...current.privacy,
+        flaggedItemExportPolicy: 'block'
+      },
+      scan: {
+        ...current.scan,
+        scanOnLaunch: false,
+        includeArchivedSessions: true
+      }
+    })
+
+    expect(saved.generation).toMatchObject({
+      batchSize: 16,
+      boundedConcurrency: current.generation.boundedConcurrency,
+      maxItemsPerSession: 12,
+      typeBalanceProfile: {
+        targetExpression: 0.7,
+        targetSentence: 0.3,
+        lambda: 0.25
+      }
+    })
+    expect(saved.privacy.flaggedItemExportPolicy).toBe('block')
+    expect(saved.scan).toMatchObject({
+      scanOnLaunch: false,
+      includeArchivedSessions: true
+    })
+    expect(service.get()).toEqual(saved)
+  })
 })

@@ -5,6 +5,7 @@ import {
   PLATFORM_OPTIONS,
   applySessionSelection,
   groupSessions,
+  resolveSearchBootPlan,
   type ProjectOption,
   type SearchGroupBy,
   type SearchPlatform
@@ -184,18 +185,15 @@ export function SearchPage(props: {
     void (async () => {
       try {
         const status = await trpc.launchScanStatus.query()
+        const bootPlan = resolveSearchBootPlan(status)
 
-        if (!status.scanOnLaunch) {
-          await trpc.sessionRescan.mutate()
+        if (bootPlan.focusedSessionId) {
+          setFocusedSessionId(bootPlan.focusedSessionId)
         }
-
-        if (status.launchPlan?.focusedSessionId) {
-          setFocusedSessionId(status.launchPlan.focusedSessionId)
+        if (bootPlan.collapsedGroupIds) {
+          setCollapsedGroupIds(new Set(bootPlan.collapsedGroupIds))
         }
-        if (status.launchPlan?.collapsedGroupIds) {
-          setCollapsedGroupIds(new Set(status.launchPlan.collapsedGroupIds))
-        }
-        await loadProjects(status.launchPlan?.selectedProjectIds)
+        await loadProjects(bootPlan.selectedProjectIds)
         setReadyToLoad(true)
       } catch {
         await loadProjects()

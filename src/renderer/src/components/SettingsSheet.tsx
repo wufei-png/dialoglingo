@@ -5,6 +5,7 @@ import { trpc } from '../lib/trpc'
 
 type BackendKind = Settings['modelBackend']['kind']
 type ExpressionDifficulty = Settings['generation']['expressionDifficulty']
+type FlaggedItemExportPolicy = Settings['privacy']['flaggedItemExportPolicy']
 type CliToolKey = 'codex' | 'claude' | 'opencode'
 
 const BATCH_SIZE_HELP =
@@ -44,6 +45,24 @@ function toPositiveInt(value: string, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+function toNonNegativeNumber(value: string, fallback: number) {
+  const parsed = Number.parseFloat(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback
+}
+
+function toPercent(value: number) {
+  return String(Math.round(value * 100))
+}
+
+function toPercentInt(value: string, fallback: number) {
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+
+  return Math.min(100, Math.max(0, parsed))
+}
+
 export function SettingsSheet(props: Props) {
   const queryClient = useQueryClient()
   const settingsQuery = useQuery({
@@ -65,6 +84,13 @@ export function SettingsSheet(props: Props) {
   const [expressionDifficulty, setExpressionDifficulty] =
     useState<ExpressionDifficulty>('average')
   const [batchSize, setBatchSize] = useState('32')
+  const [maxItemsPerSession, setMaxItemsPerSession] = useState('50')
+  const [expressionTargetPercent, setExpressionTargetPercent] = useState('60')
+  const [balanceStrength, setBalanceStrength] = useState('0.1')
+  const [scanOnLaunch, setScanOnLaunch] = useState(true)
+  const [includeArchivedSessions, setIncludeArchivedSessions] = useState(false)
+  const [flaggedItemExportPolicy, setFlaggedItemExportPolicy] =
+    useState<FlaggedItemExportPolicy>('warn')
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -85,6 +111,14 @@ export function SettingsSheet(props: Props) {
     setCliTimeoutMs(String(settingsQuery.data.modelBackend.cli.timeoutMs))
     setExpressionDifficulty(settingsQuery.data.generation.expressionDifficulty)
     setBatchSize(String(settingsQuery.data.generation.batchSize))
+    setMaxItemsPerSession(String(settingsQuery.data.generation.maxItemsPerSession))
+    setExpressionTargetPercent(
+      toPercent(settingsQuery.data.generation.typeBalanceProfile.targetExpression)
+    )
+    setBalanceStrength(String(settingsQuery.data.generation.typeBalanceProfile.lambda))
+    setScanOnLaunch(settingsQuery.data.scan.scanOnLaunch)
+    setIncludeArchivedSessions(settingsQuery.data.scan.includeArchivedSessions)
+    setFlaggedItemExportPolicy(settingsQuery.data.privacy.flaggedItemExportPolicy)
     setSaveMessage(null)
   }, [settingsQuery.data])
 
@@ -94,6 +128,7 @@ export function SettingsSheet(props: Props) {
 
   async function saveSettings() {
     const current = settingsQuery.data ?? ((await trpc.settingsGet.query()) as Settings)
+    const nextExpressionTarget = toPercentInt(expressionTargetPercent, 60) / 100
     const next: Settings = {
       ...current,
       provider: {
@@ -122,7 +157,28 @@ export function SettingsSheet(props: Props) {
       generation: {
         ...current.generation,
         expressionDifficulty,
-        batchSize: toPositiveInt(batchSize, current.generation.batchSize)
+        batchSize: toPositiveInt(batchSize, current.generation.batchSize),
+        maxItemsPerSession: toPositiveInt(
+          maxItemsPerSession,
+          current.generation.maxItemsPerSession
+        ),
+        typeBalanceProfile: {
+          targetExpression: nextExpressionTarget,
+          targetSentence: 1 - nextExpressionTarget,
+          lambda: toNonNegativeNumber(
+            balanceStrength,
+            current.generation.typeBalanceProfile.lambda
+          )
+        }
+      },
+      privacy: {
+        ...current.privacy,
+        flaggedItemExportPolicy
+      },
+      scan: {
+        ...current.scan,
+        scanOnLaunch,
+        includeArchivedSessions
       }
     }
     const saved = (await trpc.settingsSave.mutate(next)) as Settings
@@ -245,6 +301,80 @@ export function SettingsSheet(props: Props) {
               value={batchSize}
               onChange={(event) => setBatchSize(event.currentTarget.value)}
             />
+          </label>
+          <label>
+            <span>Max items per session</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={maxItemsPerSession}
+              onChange={(event) => setMaxItemsPerSession(event.currentTarget.value)}
+            />
+          </label>
+          <label>
+            <span>Expression target ({expressionTargetPercent}%)</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={expressionTargetPercent}
+              onChange={(event) => setExpressionTargetPercent(event.currentTarget.value)}
+            />
+          </label>
+          <p className="settings-help">
+            Sentence target is {100 - toPercentInt(expressionTargetPercent, 60)}%.
+          </p>
+          <label>
+            <span>Balance strength</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={balanceStrength}
+              onChange={(event) => setBalanceStrength(event.currentTarget.value)}
+            />
+          </label>
+          <h3 className="settings-section-heading">Privacy</h3>
+          <label>
+            <span>Flagged item export policy</span>
+            <select
+              value={flaggedItemExportPolicy}
+              onChange={(event) =>
+                setFlaggedItemExportPolicy(
+                  event.currentTarget.value as FlaggedItemExportPolicy
+                )
+              }
+            >
+              <option value="warn">Warn and require explicit keep</option>
+              <option value="block">Block flagged items</option>
+            </select>
+          </label>
+          <h3 className="settings-section-heading">Scan</h3>
+          <label className="settings-toggle-row">
+            <span>Scan on launch</span>
+            <span className="settings-switch-control">
+              <input
+                className="settings-switch-input"
+                type="checkbox"
+                checked={scanOnLaunch}
+                onChange={(event) => setScanOnLaunch(event.currentTarget.checked)}
+              />
+              <span className="settings-switch" aria-hidden="true" />
+            </span>
+          </label>
+          <label className="settings-toggle-row">
+            <span>Include archived sessions</span>
+            <span className="settings-switch-control">
+              <input
+                className="settings-switch-input"
+                type="checkbox"
+                checked={includeArchivedSessions}
+                onChange={(event) => setIncludeArchivedSessions(event.currentTarget.checked)}
+              />
+              <span className="settings-switch" aria-hidden="true" />
+            </span>
           </label>
           <div className="settings-actions">
             <button type="button" onClick={() => void saveSettings()}>

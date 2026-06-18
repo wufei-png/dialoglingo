@@ -39,7 +39,7 @@ describe('settingsSchema', () => {
   it('adds compact layout and model backend defaults to legacy settings', () => {
     const parsed = settingsSchema.parse(LEGACY_SETTINGS)
 
-    expect(DEFAULT_SPLIT_RATIO).toBe(0.2)
+    expect(DEFAULT_SPLIT_RATIO).toBe(0.3)
     expect(parsed.ui.splitRatio).toBe(DEFAULT_SPLIT_RATIO)
     expect(parsed.ui.workbookSplitRatio).toBe(DEFAULT_WORKBOOK_SPLIT_RATIO)
     expect(parsed.ui.workbookSourcePinned).toBe(false)

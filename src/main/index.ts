@@ -12,13 +12,17 @@ import { createDb } from './db/client'
 import { runMigrations } from './db/migrate'
 import { chooseExportFallback } from './errors/sourceIssues'
 import { writeAnkiTextBundle } from './export/ankiTextBundle'
-import { writeApkg } from './export/apkg'
+import { buildAnkiPackage } from './export/apkg'
 import { writeGenericTextBundle } from './export/genericTextBundle'
 import {
+  countExportRows,
   filterExportableItems,
   type ExportDirection,
-  type ExportFormat
+  type ExportFormat,
+  type ExportRowsInput,
+  type StudyItemType
 } from './export/manifest'
+import { buildWorkbookExportRows } from './export/workbookRows'
 import { runGenerationJob } from './generation/jobRunner'
 import { writeWorkbookDraft } from './generation/materializeWorkbook'
 import { buildGenerationPromptPreview } from './generation/promptPreview'
@@ -313,39 +317,33 @@ function listWorkbookItems(input: {
 }
 
 function toLegacyExportRows(items: WorkbookListItem[]) {
-  const expressionRows = items
-    .filter((item) => item.itemType === 'Expression')
-    .map((item) => ({
-      id: item.id,
-      itemType: 'Expression' as const,
-      state: item.state,
-      source: String(item.currentSnapshot.sourceText ?? ''),
-      target: String(item.currentSnapshot.targetText ?? ''),
-      explanation: String(item.currentSnapshot.explanation ?? ''),
-      context: String(item.currentSnapshot.contextText ?? ''),
-      gloss: String(item.currentSnapshot.gloss ?? ''),
-      tags: Array.isArray(item.currentSnapshot.tags) ? item.currentSnapshot.tags : [],
-      flagged: item.currentSnapshot.flagged === true
-    }))
+  const sourceTypeCache = new Map<string, string | null>()
+  const getSourceType = (sessionId: string) => {
+    if (!sourceTypeCache.has(sessionId)) {
+      const row = sqlite
+        .prepare('select source_type as sourceType from sessions where id = ?')
+        .get(sessionId) as { sourceType?: string } | undefined
+      sourceTypeCache.set(sessionId, row?.sourceType ?? null)
+    }
 
-  const sentenceRows = items
-    .filter((item) => item.itemType === 'Sentence')
-    .map((item) => ({
-      id: item.id,
-      itemType: 'Sentence' as const,
-      state: item.state,
-      source: String(item.currentSnapshot.sourceText ?? ''),
-      target: String(item.currentSnapshot.targetText ?? ''),
-      explanation: String(item.currentSnapshot.explanation ?? ''),
-      context: String(item.currentSnapshot.contextText ?? ''),
-      tags: Array.isArray(item.currentSnapshot.tags) ? item.currentSnapshot.tags : [],
-      flagged: item.currentSnapshot.flagged === true
-    }))
-
-  return {
-    expressionRows,
-    sentenceRows
+    return sourceTypeCache.get(sessionId) ?? null
   }
+
+  return buildWorkbookExportRows(items, getSourceType)
+}
+
+function includedItemTypes(input: {
+  includeExpressions: boolean
+  includeSentences: boolean
+}): StudyItemType[] {
+  const types: StudyItemType[] = []
+  if (input.includeExpressions) {
+    types.push('Expression')
+  }
+  if (input.includeSentences) {
+    types.push('Sentence')
+  }
+  return types
 }
 
 function expandOutputPath(value: string) {
@@ -635,85 +633,46 @@ function createRouter() {
           tab: 'all'
         })
         const rows = toLegacyExportRows(items)
+        const selectedItemCounts = countExportRows(rows.expressions, rows.sentences)
         const flaggedPolicy = (settings.get() as {
           privacy: { flaggedItemExportPolicy: 'block' | 'warn' }
         }).privacy.flaggedItemExportPolicy
-        const expressionRows = filterExportableItems(rows.expressionRows, {
+        const expressionRows = filterExportableItems(rows.expressions, {
           includeExpressions: input.request.includeExpressions,
           includeSentences: input.request.includeSentences,
           keepFlaggedItems: input.request.keepFlaggedItems ?? false,
           flaggedItemExportPolicy: flaggedPolicy
         })
-        const sentenceRows = filterExportableItems(rows.sentenceRows, {
+        const sentenceRows = filterExportableItems(rows.sentences, {
           includeExpressions: input.request.includeExpressions,
           includeSentences: input.request.includeSentences,
           keepFlaggedItems: input.request.keepFlaggedItems ?? false,
           flaggedItemExportPolicy: flaggedPolicy
         })
         const outputLocation = expandOutputPath(input.request.outputLocation)
+        const exportInput: ExportRowsInput = {
+          workbookId: input.workbookId,
+          deckName: input.request.deckName,
+          direction: input.request.direction,
+          tagPrefix: input.request.tagPrefix,
+          includedItemTypes: includedItemTypes(input.request),
+          selectedItemCounts,
+          expressions: expressionRows.items,
+          sentences: sentenceRows.items
+        }
 
         try {
           if (input.request.format === 'anki-text-bundle') {
-            await writeAnkiTextBundle(outputLocation, {
-              workbookId: input.workbookId,
-              deckName: input.request.deckName,
-              direction: input.request.direction,
-              tagPrefix: input.request.tagPrefix,
-              expressionRows: expressionRows.map((row) => ({
-                source: row.source,
-                target: row.target
-              })),
-              sentenceRows: sentenceRows.map((row) => ({
-                source: row.source,
-                target: row.target
-              }))
-            })
+            await writeAnkiTextBundle(outputLocation, exportInput)
           } else if (input.request.format === 'generic-text-bundle') {
-            await writeGenericTextBundle(outputLocation, {
-              workbookId: input.workbookId,
-              deckName: input.request.deckName,
-              direction: input.request.direction,
-              tagPrefix: input.request.tagPrefix,
-              expressionRows: expressionRows.map((row) => ({
-                source: row.source,
-                target: row.target,
-                explanation: row.explanation,
-                tags: row.tags
-              })),
-              sentenceRows: sentenceRows.map((row) => ({
-                source: row.source,
-                target: row.target,
-                explanation: row.explanation,
-                tags: row.tags
-              }))
-            })
+            await writeGenericTextBundle(outputLocation, exportInput)
           } else {
-            const buffer = await writeApkg({
-              deckName: input.request.deckName,
-              direction: input.request.direction,
-              tagPrefix: input.request.tagPrefix,
-              expressionRows: expressionRows.map((row) => ({
-                front: row.source,
-                back: row.target,
-                gloss: row.gloss,
-                context: row.context,
-                explanation: row.explanation,
-                quiz: row.context,
-                tags: row.tags
-              })),
-              sentenceRows: sentenceRows.map((row) => ({
-                front: row.source,
-                back: row.target,
-                context: row.context,
-                explanation: row.explanation,
-                tags: row.tags
-              }))
-            })
+            const output = await buildAnkiPackage(exportInput)
             const filePath = outputLocation.endsWith('.apkg')
               ? outputLocation
               : path.join(outputLocation, `${input.request.deckName}.apkg`)
             await mkdir(path.dirname(filePath), { recursive: true })
-            await writeFile(filePath, buffer)
+            await writeFile(filePath, output.data)
           }
 
           sqlite
@@ -739,7 +698,11 @@ function createRouter() {
               JSON.stringify({
                 deckName: input.request.deckName,
                 direction: input.request.direction,
-                keepFlaggedItems: input.request.keepFlaggedItems ?? false
+                keepFlaggedItems: input.request.keepFlaggedItems ?? false,
+                selectedItemCounts,
+                exportedItemCounts: countExportRows(exportInput.expressions, exportInput.sentences),
+                includedItemTypes: exportInput.includedItemTypes,
+                warnings: [...expressionRows.warnings, ...sentenceRows.warnings]
               })
             )
 

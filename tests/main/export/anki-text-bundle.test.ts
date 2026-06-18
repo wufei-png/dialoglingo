@@ -31,8 +31,19 @@ describe('writeAnkiTextBundle', () => {
         state: 'active',
         expression: 'break\tdown',
         translation: '拆解\n分析',
+        gloss: 'break down',
+        context: 'Break down the task.',
         explanation: 'Use <carefully> & explain "why".',
-        example: 'Break down the task.',
+        quizPrompt: 'What does break down mean?',
+        quizAnswer: 'Analyze step by step.',
+        sourceRefs: [
+          {
+            sessionId: 's1',
+            sourceSpanRef: 'fixture:1',
+            excerpt: 'Break down the task.',
+            sourceType: 'codex'
+          }
+        ],
         tags: ['agent chat']
       }
     ]
@@ -43,12 +54,16 @@ describe('writeAnkiTextBundle', () => {
         state: 'active',
         sentence: 'Can you ship this today?',
         translation: '今天能发布吗？',
+        focus: 'ship this',
         note: 'Polite delivery question.',
+        quizPrompt: 'What is being asked?',
+        quizAnswer: 'Whether release can happen today.',
         tags: ['release']
       }
     ]
 
     const bundle = buildAnkiTextBundle({
+      workbookId: 'w1',
       deckName: 'DialogLingo',
       direction: 'bilingual',
       tagPrefix: 'dl',
@@ -58,36 +73,58 @@ describe('writeAnkiTextBundle', () => {
     })
 
     expect(Object.keys(bundle.files).sort()).toEqual([
-      'expressions.tsv',
+      'README-import.md',
+      'expression.tsv',
       'manifest.json',
-      'sentences.tsv'
+      'sentence.tsv'
     ])
 
     const manifest = JSON.parse(bundle.files['manifest.json'])
     expect(manifest).toMatchObject({
       schemaVersion: 1,
+      workbookId: 'w1',
       format: 'anki-text-bundle',
       deckName: 'DialogLingo',
       direction: 'bilingual',
+      includedItemTypes: ['Expression', 'Sentence'],
+      selectedItemCounts: {
+        expressions: 1,
+        sentences: 1,
+        total: 2
+      },
+      exportedItemCounts: {
+        expressions: 1,
+        sentences: 1,
+        total: 2
+      },
       itemCounts: {
         expressions: 1,
         sentences: 1,
         total: 2
       },
-      files: ['expressions.tsv', 'sentences.tsv']
+      sourcePlatformSummary: {
+        codex: 1
+      },
+      files: ['expression.tsv', 'sentence.tsv', 'README-import.md', 'manifest.json']
     })
 
-    const expressionRows = bundle.files['expressions.tsv'].split('\n')
-    expect(expressionRows[0]).toBe('front\tback\ttags')
-    expect(expressionRows[1].split('\t')).toHaveLength(3)
+    expect(bundle.files['README-import.md']).toContain('DialogLingo::Expression')
+
+    const expressionRows = bundle.files['expression.tsv'].split('\n')
+    expect(expressionRows[0]).toBe('Front\tBack\tGloss\tContext\tExplanation\tQuiz\tTags')
+    expect(expressionRows[1].split('\t')).toHaveLength(7)
     expect(expressionRows[1]).toContain('break\\tdown')
     expect(expressionRows[1]).toContain('拆解<br>分析')
+    expect(expressionRows[1]).toContain('Break down the task.')
+    expect(expressionRows[1]).toContain('Prompt: What does break down mean?')
     expect(expressionRows[1]).toContain('&lt;carefully&gt; &amp; explain &quot;why&quot;.')
     expect(expressionRows[1]).toContain('dl::expression agent_chat')
 
-    const sentenceRows = bundle.files['sentences.tsv'].split('\n')
+    const sentenceRows = bundle.files['sentence.tsv'].split('\n')
+    expect(sentenceRows[0]).toBe('Front\tBack\tFocus\tExplanation\tQuiz\tTags')
     expect(sentenceRows[1]).toContain('Can you ship this today?')
     expect(sentenceRows[1]).toContain('今天能发布吗？')
+    expect(sentenceRows[1]).toContain('ship this')
     expect(sentenceRows[1]).toContain('dl::sentence release')
   })
 })

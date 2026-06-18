@@ -43,8 +43,9 @@ describe('writeApkg', () => {
         state: 'active',
         expression: 'break down',
         translation: '拆解',
+        gloss: 'break down',
+        context: 'Break down the task.',
         explanation: 'Use <explicit> steps.',
-        example: 'Break down the task.',
         tags: ['agent chat']
       }
     ]
@@ -62,6 +63,7 @@ describe('writeApkg', () => {
 
     const result = await buildAnkiPackage(
       {
+        workbookId: 'w1',
         deckName: 'DialogLingo',
         direction: 'en-zh',
         tagPrefix: 'dl',
@@ -91,6 +93,7 @@ describe('writeApkg', () => {
     expect(cards[1]?.back).toContain('今天能发布吗？')
     expect(result.data).toEqual(Buffer.from('apkg'))
     expect(result.manifest).toMatchObject({
+      workbookId: 'w1',
       format: 'anki-package',
       itemCounts: {
         expressions: 1,

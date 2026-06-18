@@ -24,6 +24,7 @@ export interface AnkiPackageDependencies {
 }
 
 export interface LegacyApkgInput {
+  workbookId?: string
   deckName: string
   direction?: ExportRowsInput['direction']
   tagPrefix?: string
@@ -101,6 +102,7 @@ const ankiApkgExporterSpecifier = '@paperclipsapp/anki-apkg-export'
 
 function normalizeLegacyRows(input: LegacyApkgInput): ExportRowsInput {
   return {
+    workbookId: input.workbookId ?? input.deckName,
     deckName: input.deckName,
     direction: input.direction ?? 'bilingual',
     tagPrefix: input.tagPrefix ?? 'dialoglingo',
@@ -110,8 +112,10 @@ function normalizeLegacyRows(input: LegacyApkgInput): ExportRowsInput {
       state: 'active',
       expression: row.front,
       translation: row.back,
+      gloss: row.gloss,
+      context: row.context,
       explanation: row.explanation ?? row.gloss,
-      example: row.context ?? row.quiz,
+      quizPrompt: row.quiz,
       tags: row.tags
     })),
     sentences: input.sentenceRows.map((row, index) => ({
@@ -120,6 +124,7 @@ function normalizeLegacyRows(input: LegacyApkgInput): ExportRowsInput {
       state: 'active',
       sentence: row.front,
       translation: row.back,
+      context: row.context,
       note: row.explanation ?? row.context,
       tags: row.tags
     }))

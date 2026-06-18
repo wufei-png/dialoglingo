@@ -1,5 +1,13 @@
 export type SearchPlatform = 'codex' | 'claude' | 'opencode'
 export type SearchGroupBy = 'platform' | 'time' | 'project'
+export type SearchBootStatus = {
+  scanOnLaunch: boolean
+  launchPlan: {
+    selectedProjectIds: string[]
+    focusedSessionId: string | null
+    collapsedGroupIds: string[]
+  } | null
+}
 
 export const PLATFORM_OPTIONS: SearchPlatform[] = ['codex', 'claude', 'opencode']
 
@@ -61,6 +69,15 @@ export function togglePlatformFilter(
     : [...current, platform]
 
   return PLATFORM_OPTIONS.filter((value) => next.includes(value))
+}
+
+export function resolveSearchBootPlan(status: SearchBootStatus) {
+  return {
+    shouldManualRescan: false,
+    selectedProjectIds: status.launchPlan?.selectedProjectIds,
+    focusedSessionId: status.launchPlan?.focusedSessionId ?? null,
+    collapsedGroupIds: status.launchPlan?.collapsedGroupIds
+  }
 }
 
 export function areAllSessionIdsSelected(

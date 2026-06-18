@@ -32,9 +32,19 @@ describe('writeGenericTextBundle', () => {
         state: 'active',
         expression: 'break down, not "skip"',
         translation: '拆解，不要跳过',
+        gloss: 'break down',
+        context: 'Break down the task.',
         explanation: 'Useful for reviews',
-        example: 'Break down the task.',
-        source: 'codex',
+        quizPrompt: 'What does it mean?',
+        quizAnswer: 'Analyze instead of skipping.',
+        sourceRefs: [
+          {
+            sessionId: 's1',
+            sourceSpanRef: 'fixture:1',
+            excerpt: 'Break down the task.',
+            sourceType: 'codex'
+          }
+        ],
         tags: ['agent chat']
       }
     ]
@@ -45,13 +55,25 @@ describe('writeGenericTextBundle', () => {
         state: 'active',
         sentence: 'Ship it, then verify.',
         translation: '先发布，然后验证。',
+        focus: 'ship it',
+        context: 'Ship it, then verify.',
         note: 'Imperative workflow sentence',
-        source: 'codex',
+        quizPrompt: 'What should happen after shipping?',
+        quizAnswer: 'Verify it.',
+        sourceRefs: [
+          {
+            sessionId: 's2',
+            sourceSpanRef: 'fixture:2',
+            excerpt: 'Ship it, then verify.',
+            sourceType: 'claude'
+          }
+        ],
         tags: ['release']
       }
     ]
 
     const bundle = buildGenericTextBundle({
+      workbookId: 'w1',
       deckName: 'DialogLingo',
       direction: 'en-zh',
       tagPrefix: 'dl',
@@ -61,15 +83,17 @@ describe('writeGenericTextBundle', () => {
     })
 
     expect(Object.keys(bundle.files).sort()).toEqual([
-      'expressions.csv',
-      'items.jsonl',
+      'expression.csv',
+      'expression.md',
       'manifest.json',
-      'sentences.csv'
+      'sentence.csv',
+      'sentence.md'
     ])
 
     const manifest = JSON.parse(bundle.files['manifest.json'])
     expect(manifest).toMatchObject({
       schemaVersion: 1,
+      workbookId: 'w1',
       format: 'generic-text-bundle',
       deckName: 'DialogLingo',
       itemCounts: {
@@ -77,17 +101,24 @@ describe('writeGenericTextBundle', () => {
         sentences: 1,
         total: 2
       },
-      files: ['expressions.csv', 'sentences.csv', 'items.jsonl']
+      sourcePlatformSummary: {
+        codex: 1,
+        claude: 1
+      },
+      files: [
+        'expression.csv',
+        'sentence.csv',
+        'expression.md',
+        'sentence.md',
+        'manifest.json'
+      ]
     })
 
-    expect(bundle.files['expressions.csv']).toContain('"break down, not ""skip"""')
-    expect(bundle.files['sentences.csv']).toContain('"Ship it, then verify."')
-
-    const jsonLines = bundle.files['items.jsonl'].trim().split('\n').map((line) => JSON.parse(line))
-    expect(jsonLines.map((line) => line.itemType)).toEqual(['Expression', 'Sentence'])
-    expect(jsonLines[0]).toMatchObject({
-      id: 'expr-1',
-      expression: 'break down, not "skip"'
-    })
+    expect(bundle.files['expression.csv']).toContain('"break down, not ""skip"""')
+    expect(bundle.files['expression.csv']).toContain('Analyze instead of skipping.')
+    expect(bundle.files['sentence.csv']).toContain('"Ship it, then verify."')
+    expect(bundle.files['expression.md']).toContain('## break down, not &quot;skip&quot;')
+    expect(bundle.files['expression.md']).toContain('Source refs: codex:s1:fixture:1')
+    expect(bundle.files['sentence.md']).toContain('Focus: ship it')
   })
 })

@@ -3,6 +3,7 @@ import {
   escapeCsvField,
   escapeHtml,
   type ExportRowsInput,
+  type ExportSourceRef,
   type ExpressionExportRow,
   type SentenceExportRow,
   type TextBundleOutput
@@ -20,19 +21,37 @@ export interface LegacyGenericTextBundleInput {
   expressionRows: Array<{
     source?: string
     target?: string
+    gloss?: string
+    context?: string
     explanation?: string
+    quiz?: string
+    quizPrompt?: string
+    quizAnswer?: string
+    sourceRefs?: ExportSourceRef[]
     tags?: string[]
   }>
   sentenceRows: Array<{
     source?: string
     target?: string
+    focus?: string
+    context?: string
     explanation?: string
+    quiz?: string
+    quizPrompt?: string
+    quizAnswer?: string
+    sourceRefs?: ExportSourceRef[]
     tags?: string[]
   }>
 }
 
 export function buildGenericTextBundle(input: ExportRowsInput): TextBundleOutput {
-  const files = ['expressions.csv', 'sentences.csv', 'items.jsonl']
+  const files = [
+    'expression.csv',
+    'sentence.csv',
+    'expression.md',
+    'sentence.md',
+    'manifest.json'
+  ]
   const manifest = createExportManifest({
     ...input,
     format: 'generic-text-bundle',
@@ -43,33 +62,20 @@ export function buildGenericTextBundle(input: ExportRowsInput): TextBundleOutput
     manifest,
     files: {
       'manifest.json': JSON.stringify(manifest, null, 2),
-      'expressions.csv': writeExpressionCsv(input.expressions),
-      'sentences.csv': writeSentenceCsv(input.sentences),
-      'items.jsonl': writeJsonl([...input.expressions, ...input.sentences])
+      'expression.csv': writeExpressionCsv(input.expressions),
+      'sentence.csv': writeSentenceCsv(input.sentences),
+      'expression.md': writeExpressionMarkdown(input.expressions),
+      'sentence.md': writeSentenceMarkdown(input.sentences)
     }
   }
 }
 
 export async function writeGenericTextBundle(
   outputDir: string,
-  input: LegacyGenericTextBundleInput
+  input: ExportRowsInput | LegacyGenericTextBundleInput
 ): Promise<TextBundleOutput> {
-  const rowsInput = normalizeLegacyRows(input)
-  const files = ['expression.csv', 'sentence.csv', 'sentence.md']
-  const manifest = createExportManifest({
-    ...rowsInput,
-    format: 'generic-text-bundle',
-    files
-  })
-  const output: TextBundleOutput = {
-    manifest,
-    files: {
-      'manifest.json': JSON.stringify(manifest, null, 2),
-      'expression.csv': writeExpressionCsv(rowsInput.expressions),
-      'sentence.csv': writeSentenceCsv(rowsInput.sentences),
-      'sentence.md': writeSentenceMarkdown(rowsInput.sentences)
-    }
-  }
+  const rowsInput = normalizeRowsInput(input)
+  const output = buildGenericTextBundle(rowsInput)
 
   await writeBundleFiles(outputDir, output.files)
   return output
@@ -77,15 +83,31 @@ export async function writeGenericTextBundle(
 
 function writeExpressionCsv(rows: ExpressionExportRow[]): string {
   return writeCsv(
-    ['id', 'type', 'expression', 'translation', 'explanation', 'example', 'source', 'tags', 'isFlagged'],
+    [
+      'id',
+      'type',
+      'expression',
+      'translation',
+      'gloss',
+      'context',
+      'explanation',
+      'quizPrompt',
+      'quizAnswer',
+      'sourceRefs',
+      'tags',
+      'isFlagged'
+    ],
     rows.map((row) => [
       row.id,
       row.itemType,
       row.expression,
       row.translation,
+      row.gloss ?? '',
+      row.context ?? '',
       row.explanation ?? '',
-      row.example ?? '',
-      row.source ?? '',
+      row.quizPrompt ?? '',
+      row.quizAnswer ?? '',
+      formatSourceRefs(row.sourceRefs),
       (row.tags ?? []).join(' '),
       row.isFlagged === true ? 'true' : 'false'
     ])
@@ -94,14 +116,31 @@ function writeExpressionCsv(rows: ExpressionExportRow[]): string {
 
 function writeSentenceCsv(rows: SentenceExportRow[]): string {
   return writeCsv(
-    ['id', 'type', 'sentence', 'translation', 'note', 'source', 'tags', 'isFlagged'],
+    [
+      'id',
+      'type',
+      'sentence',
+      'translation',
+      'focus',
+      'context',
+      'explanation',
+      'quizPrompt',
+      'quizAnswer',
+      'sourceRefs',
+      'tags',
+      'isFlagged'
+    ],
     rows.map((row) => [
       row.id,
       row.itemType,
       row.sentence,
       row.translation,
+      row.focus ?? '',
+      row.context ?? '',
       row.note ?? '',
-      row.source ?? '',
+      row.quizPrompt ?? '',
+      row.quizAnswer ?? '',
+      formatSourceRefs(row.sourceRefs),
       (row.tags ?? []).join(' '),
       row.isFlagged === true ? 'true' : 'false'
     ])
@@ -114,18 +153,94 @@ function writeCsv(headers: string[], rows: string[][]): string {
     .join('\n')
 }
 
-function writeJsonl(rows: Array<ExpressionExportRow | SentenceExportRow>): string {
-  return rows.map((row) => JSON.stringify(row)).join('\n')
+function formatSourceRefs(sourceRefs: ExportSourceRef[] = []): string {
+  return JSON.stringify(sourceRefs)
+}
+
+function writeExpressionMarkdown(rows: ExpressionExportRow[]): string {
+  if (rows.length === 0) {
+    return '# Expressions\n\nNo expression items were exported.'
+  }
+
+  return [
+    '# Expressions',
+    '',
+    ...rows.map((row) =>
+      [
+        `## ${escapeHtml(row.expression)}`,
+        '',
+        `- Translation: ${escapeHtml(row.translation)}`,
+        `- Gloss: ${escapeHtml(row.gloss ?? '')}`,
+        `- Context: ${escapeHtml(row.context ?? '')}`,
+        `- Explanation: ${escapeHtml(row.explanation ?? '')}`,
+        `- Quiz: ${escapeHtml(formatQuiz(row.quizPrompt, row.quizAnswer))}`,
+        `- Tags: ${escapeHtml((row.tags ?? []).join(' '))}`,
+        `- Source refs: ${escapeHtml(formatSourceSummary(row.sourceRefs))}`
+      ].join('\n')
+    )
+  ].join('\n')
 }
 
 function writeSentenceMarkdown(rows: SentenceExportRow[]): string {
-  return rows
-    .map((row) => `## ${escapeHtml(row.sentence)}\n\n${escapeHtml(row.translation)}`)
-    .join('\n\n')
+  if (rows.length === 0) {
+    return '# Sentences\n\nNo sentence items were exported.'
+  }
+
+  return [
+    '# Sentences',
+    '',
+    ...rows.map((row) =>
+      [
+        `## ${escapeHtml(row.sentence)}`,
+        '',
+        `- Translation: ${escapeHtml(row.translation)}`,
+        `- Focus: ${escapeHtml(row.focus ?? '')}`,
+        `- Context: ${escapeHtml(row.context ?? '')}`,
+        `- Explanation: ${escapeHtml(row.note ?? '')}`,
+        `- Quiz: ${escapeHtml(formatQuiz(row.quizPrompt, row.quizAnswer))}`,
+        `- Tags: ${escapeHtml((row.tags ?? []).join(' '))}`,
+        `- Source refs: ${escapeHtml(formatSourceSummary(row.sourceRefs))}`
+      ].join('\n')
+    )
+  ].join('\n')
+}
+
+function formatQuiz(prompt?: string, answer?: string): string {
+  return [
+    prompt?.trim() ? `Prompt: ${prompt.trim()}` : undefined,
+    answer?.trim() ? `Answer: ${answer.trim()}` : undefined
+  ].filter((section): section is string => Boolean(section)).join(' ')
+}
+
+function formatSourceSummary(sourceRefs: ExportSourceRef[] = []): string {
+  if (sourceRefs.length === 0) {
+    return 'none'
+  }
+
+  return sourceRefs
+    .map((ref) =>
+      [
+        ref.sourceType ?? 'unknown',
+        ref.sessionId,
+        ref.sourceSpanRef
+      ].filter(Boolean).join(':')
+    )
+    .join(', ')
+}
+
+function normalizeRowsInput(
+  input: ExportRowsInput | LegacyGenericTextBundleInput
+): ExportRowsInput {
+  if ('expressions' in input) {
+    return input
+  }
+
+  return normalizeLegacyRows(input)
 }
 
 function normalizeLegacyRows(input: LegacyGenericTextBundleInput): ExportRowsInput {
   return {
+    workbookId: input.workbookId,
     deckName: input.deckName ?? input.workbookId,
     direction: input.direction ?? 'bilingual',
     tagPrefix: input.tagPrefix ?? 'dialoglingo',
@@ -135,7 +250,12 @@ function normalizeLegacyRows(input: LegacyGenericTextBundleInput): ExportRowsInp
       state: 'active',
       expression: row.source ?? '',
       translation: row.target ?? '',
+      gloss: row.gloss,
+      context: row.context,
       explanation: row.explanation,
+      quizPrompt: row.quizPrompt ?? row.quiz,
+      quizAnswer: row.quizAnswer,
+      sourceRefs: row.sourceRefs,
       tags: row.tags
     })),
     sentences: input.sentenceRows.map((row, index) => ({
@@ -144,7 +264,12 @@ function normalizeLegacyRows(input: LegacyGenericTextBundleInput): ExportRowsInp
       state: 'active',
       sentence: row.source ?? '',
       translation: row.target ?? '',
+      focus: row.focus,
+      context: row.context,
       note: row.explanation,
+      quizPrompt: row.quizPrompt ?? row.quiz,
+      quizAnswer: row.quizAnswer,
+      sourceRefs: row.sourceRefs,
       tags: row.tags
     }))
   }
