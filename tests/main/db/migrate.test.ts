@@ -56,7 +56,7 @@ describe('runMigrations', () => {
       .prepare("select count(*) as count from session_search where session_id = 's1'")
       .get() as { count: number }
 
-    expect(migrationCount.count).toBe(4)
+    expect(migrationCount.count).toBe(5)
     expect(searchRows.count).toBe(1)
 
     const indexes = sqlite
@@ -79,6 +79,27 @@ describe('runMigrations', () => {
       'session_turns_session_id_seq_idx',
       'sessions_project_updated_at_idx',
       'sessions_updated_at_idx'
+    ])
+
+    const cacheTable = sqlite
+      .prepare(
+        "select count(*) as count from sqlite_master where type = 'table' and name = 'source_scan_cache'"
+      )
+      .get() as { count: number }
+    const cacheColumns = sqlite
+      .prepare("select name from pragma_table_info('source_scan_cache') order by cid")
+      .all() as Array<{ name: string }>
+
+    expect(cacheTable.count).toBe(1)
+    expect(cacheColumns.map((row) => row.name)).toEqual([
+      'source_type',
+      'locator',
+      'parser_version',
+      'size_bytes',
+      'mtime_ms',
+      'summary_json',
+      'turns_json',
+      'updated_at'
     ])
   })
 })

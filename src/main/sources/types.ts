@@ -34,6 +34,35 @@ export type ConversationTurn = {
 
 export type LanguageHint = ConversationTurn['languageHint']
 
+export type SourceFileFingerprint = {
+  sizeBytes: number
+  mtimeMs: number
+}
+
+export type CachedSessionParse = {
+  summary: Omit<SessionSummary, 'turns'>
+  turns: ConversationTurn[]
+}
+
+export type SourceScanCache = {
+  read: (input: {
+    sourceType: SourceType
+    locator: string
+    fingerprint: SourceFileFingerprint
+  }) => CachedSessionParse | null
+  write: (input: {
+    sourceType: SourceType
+    locator: string
+    fingerprint: SourceFileFingerprint
+    summary: SessionSummary
+    turns: ConversationTurn[]
+  }) => void
+}
+
+export type SourceAdapterOptions = {
+  cache?: SourceScanCache
+}
+
 export type SourceAdapter = {
   listSessions: (filters: SessionFilterInput) => Promise<SessionSummary[]>
   readSession: (id: string, options?: { locator?: string }) => Promise<ConversationTurn[]>

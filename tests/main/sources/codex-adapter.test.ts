@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import fs from 'node:fs'
+import path from 'node:path'
+import { describe, expect, it, vi } from 'vitest'
+import { createSqliteSourceScanCache } from '../../../src/main/sources/cache'
 import { createCodexAdapter } from '../../../src/main/sources/codex/adapter'
+import { createTestDb } from '../testDb'
 
 describe('createCodexAdapter', () => {
   it('lists sessions from fixture rollouts', async () => {
@@ -34,5 +38,45 @@ describe('createCodexAdapter', () => {
     expect(turns.map((turn) => turn.text).join('\n')).not.toContain(
       'environment_context'
     )
+  })
+
+  it('reuses cached transcript parses when the Codex rollout file fingerprint is unchanged', async () => {
+    const db = createTestDb()
+    const cache = createSqliteSourceScanCache(db)
+    const adapter = createCodexAdapter('tests/fixtures/codex', { cache })
+    const transcriptPath = path.normalize(
+      'tests/fixtures/codex/sessions/2026/06/15/rollout-2026-06-15T12-00-00-codex-session-1.jsonl'
+    )
+    const readFile = vi.spyOn(fs, 'readFileSync')
+    const countTranscriptReads = () =>
+      readFile.mock.calls.filter(
+        ([file]) => path.normalize(String(file)) === transcriptPath
+      ).length
+
+    try {
+      await adapter.listSessions({
+        query: '',
+        timeRange: null,
+        projects: [],
+        platforms: [],
+        includeArchived: false
+      })
+      expect(countTranscriptReads()).toBeGreaterThan(0)
+
+      readFile.mockClear()
+
+      const sessions = await adapter.listSessions({
+        query: '',
+        timeRange: null,
+        projects: [],
+        platforms: [],
+        includeArchived: false
+      })
+
+      expect(countTranscriptReads()).toBe(0)
+      expect(sessions[0]?.turns?.[0]?.text).toContain('Need better ranking')
+    } finally {
+      readFile.mockRestore()
+    }
   })
 })

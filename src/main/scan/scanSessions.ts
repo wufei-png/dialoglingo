@@ -7,6 +7,7 @@ import type {
   SourceRegistry,
   SourceType
 } from '../sources/types'
+import { createSqliteSourceScanCache } from '../sources/cache'
 import { isTurnToolNoise } from '../text/turnNoise'
 import { logger } from '../logging'
 import { discoverProjects } from './discoverProjects'
@@ -54,9 +55,14 @@ function isSamePersistedSession(existing: ExistingSession, next: PersistedSessio
 
 export async function scanSessions(
   db: Database.Database,
-  registry: SourceRegistry = createSourceRegistry(),
+  registry?: SourceRegistry,
   options?: { includeArchived?: boolean }
 ) {
+  const sourceRegistry =
+    registry ??
+    createSourceRegistry(undefined, {
+      cache: createSqliteSourceScanCache(db)
+    })
   const baseFilters: SessionFilterInput = {
     query: '',
     timeRange: null,
@@ -65,9 +71,9 @@ export async function scanSessions(
     includeArchived: options?.includeArchived ?? false
   }
 
-  const codexSummaries = await registry.codex.listSessions(baseFilters)
-  const claudeSummaries = await registry.claude.listSessions(baseFilters)
-  const opencodeSummaries = await registry.opencode.listSessions(baseFilters)
+  const codexSummaries = await sourceRegistry.codex.listSessions(baseFilters)
+  const claudeSummaries = await sourceRegistry.claude.listSessions(baseFilters)
+  const opencodeSummaries = await sourceRegistry.opencode.listSessions(baseFilters)
   const allSummaries = [
     ...codexSummaries,
     ...claudeSummaries,
@@ -248,10 +254,10 @@ export async function scanSessions(
     const turns =
       summary.turns ??
       (summary.sourceType === 'codex'
-        ? await registry.codex.readSession(summary.id, readOptions)
+        ? await sourceRegistry.codex.readSession(summary.id, readOptions)
         : summary.sourceType === 'claude'
-          ? await registry.claude.readSession(summary.id, readOptions)
-          : await registry.opencode.readSession(summary.id, readOptions))
+          ? await sourceRegistry.claude.readSession(summary.id, readOptions)
+          : await sourceRegistry.opencode.readSession(summary.id, readOptions))
 
     const searchText = turns.map((turn) => turn.text).join('\n')
     const sessionHash = crypto.createHash('sha1').update(searchText).digest('hex')

@@ -2,7 +2,7 @@ import { createClaudeAdapter, type ClaudeAdapterPaths } from './claude/adapter'
 import { createCodexAdapter } from './codex/adapter'
 import { createOpenCodeAdapter } from './opencode/adapter'
 import { discoverSourcePaths } from './pathDiscovery'
-import type { SourceRegistry } from './types'
+import type { SourceAdapterOptions, SourceRegistry } from './types'
 
 export type SourceRegistryPaths = {
   codex: string
@@ -11,11 +11,12 @@ export type SourceRegistryPaths = {
 }
 
 export function createSourceRegistry(
-  paths: SourceRegistryPaths = discoverSourcePaths()
+  paths: SourceRegistryPaths = discoverSourcePaths(),
+  options?: SourceAdapterOptions
 ): SourceRegistry {
   return {
-    codex: createCodexAdapter(paths.codex),
-    claude: createClaudeAdapter(paths.claude),
+    codex: createCodexAdapter(paths.codex, options),
+    claude: createClaudeAdapter(paths.claude, options),
     opencode: createOpenCodeAdapter(paths.opencode)
   }
 }

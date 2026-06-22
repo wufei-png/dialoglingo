@@ -49,6 +49,18 @@ export function createTestDb(): InstanceType<typeof BetterSqlite3> {
     create index sessions_project_updated_at_idx
     on sessions(project_id, updated_at desc);
 
+    create table source_scan_cache (
+      source_type text not null,
+      locator text not null,
+      parser_version text not null,
+      size_bytes integer not null,
+      mtime_ms real not null,
+      summary_json text not null,
+      turns_json text not null,
+      updated_at text not null,
+      primary key (source_type, locator)
+    );
+
     create virtual table session_search using fts5(
       session_id UNINDEXED,
       title,

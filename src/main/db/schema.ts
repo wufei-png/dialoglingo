@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 export const settingsTable = sqliteTable('settings', {
   id: integer('id').primaryKey(),
@@ -40,6 +40,23 @@ export const sessionTurnsTable = sqliteTable('session_turns', {
   sourceSpanRef: text('source_span_ref').notNull(),
   isToolNoise: integer('is_tool_noise', { mode: 'boolean' }).notNull()
 })
+
+export const sourceScanCacheTable = sqliteTable(
+  'source_scan_cache',
+  {
+    sourceType: text('source_type').notNull(),
+    locator: text('locator').notNull(),
+    parserVersion: text('parser_version').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    mtimeMs: real('mtime_ms').notNull(),
+    summaryJson: text('summary_json').notNull(),
+    turnsJson: text('turns_json').notNull(),
+    updatedAt: text('updated_at').notNull()
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.sourceType, table.locator] })
+  })
+)
 
 export const generationJobsTable = sqliteTable('generation_jobs', {
   id: text('id').primaryKey(),

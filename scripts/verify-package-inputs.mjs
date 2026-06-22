@@ -42,6 +42,14 @@ const requiredFiles = [
     'migrations',
     '0003_scan_loading_indexes.sql'
   ),
+  path.join(
+    rootDir,
+    'dist-electron',
+    'main',
+    'db',
+    'migrations',
+    '0004_source_scan_cache.sql'
+  ),
   path.join(rootDir, 'dist-electron', 'preload', 'index.js'),
   path.join(rootDir, 'dist-electron', 'renderer', 'index.html'),
   path.join(

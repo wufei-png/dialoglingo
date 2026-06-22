@@ -3,10 +3,13 @@ import path from 'node:path'
 import {
   detectLanguageHint,
   matchesSessionFilters,
+  type CachedSessionParse,
   type ConversationTurn,
   type SessionFilterInput,
   type SessionSummary,
-  type SourceAdapter
+  type SourceAdapter,
+  type SourceAdapterOptions,
+  type SourceFileFingerprint
 } from '../types'
 import { logger } from '../../logging'
 
@@ -42,6 +45,14 @@ function readJsonl(filePath: string): JsonMap[] {
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line) as JsonMap)
+}
+
+function getFileFingerprint(filePath: string): SourceFileFingerprint {
+  const stats = fs.statSync(filePath)
+  return {
+    sizeBytes: stats.size,
+    mtimeMs: stats.mtimeMs
+  }
 }
 
 function extractMessageText(content: unknown): string {
@@ -147,8 +158,7 @@ function toConversationTurn({
 }
 
 function summarizeRollout(
-  filePath: string,
-  titleIndex: Map<string, string>
+  filePath: string
 ): SessionSummary | null {
   const rows = readJsonl(filePath)
   const meta = rows.find((row) => row.type === 'session_meta') as JsonMap | undefined
@@ -171,7 +181,7 @@ function summarizeRollout(
   return {
     id: sessionId,
     sourceType: 'codex',
-    title: titleIndex.get(sessionId) ?? fallbackTitle,
+    title: fallbackTitle,
     projectPath: String(payload.cwd ?? ''),
     startedAt,
     updatedAt,
@@ -180,6 +190,69 @@ function summarizeRollout(
     archived: filePath.includes(`${path.sep}archived_sessions${path.sep}`),
     turns: turns.map(toConversationTurn)
   }
+}
+
+function withTitleIndex(
+  summary: Omit<SessionSummary, 'turns'>,
+  titleIndex: Map<string, string>
+): Omit<SessionSummary, 'turns'> {
+  return {
+    ...summary,
+    title: titleIndex.get(summary.id) ?? summary.title
+  }
+}
+
+function fromCachedRollout(
+  cached: CachedSessionParse,
+  titleIndex: Map<string, string>
+): SessionSummary {
+  return {
+    ...withTitleIndex(cached.summary, titleIndex),
+    turns: cached.turns
+  }
+}
+
+function loadRolloutSummary(
+  filePath: string,
+  titleIndex: Map<string, string>,
+  options?: SourceAdapterOptions
+) {
+  const fingerprint = getFileFingerprint(filePath)
+  const cached = options?.cache?.read({
+    sourceType: 'codex',
+    locator: filePath,
+    fingerprint
+  })
+
+  if (cached) {
+    return fromCachedRollout(cached, titleIndex)
+  }
+
+  const summary = summarizeRollout(filePath)
+  if (summary) {
+    options?.cache?.write({
+      sourceType: 'codex',
+      locator: filePath,
+      fingerprint,
+      summary,
+      turns: summary.turns ?? []
+    })
+    return {
+      ...withTitleIndex(summary, titleIndex),
+      turns: summary.turns
+    }
+  }
+
+  return null
+}
+
+function readCachedRolloutTurns(filePath: string, options?: SourceAdapterOptions) {
+  const fingerprint = getFileFingerprint(filePath)
+  return options?.cache?.read({
+    sourceType: 'codex',
+    locator: filePath,
+    fingerprint
+  })?.turns
 }
 
 function findSessionFile(root: string, sessionId: string) {
@@ -208,7 +281,10 @@ function findSessionFile(root: string, sessionId: string) {
   return null
 }
 
-export function createCodexAdapter(root: string): SourceAdapter {
+export function createCodexAdapter(
+  root: string,
+  adapterOptions?: SourceAdapterOptions
+): SourceAdapter {
   return {
     async listSessions(filters: SessionFilterInput) {
       const titleIndex = loadSessionIndex(root)
@@ -218,7 +294,7 @@ export function createCodexAdapter(root: string): SourceAdapter {
         : []
 
       return [...activeFiles, ...archivedFiles]
-        .map((filePath) => summarizeRollout(filePath, titleIndex))
+        .map((filePath) => loadRolloutSummary(filePath, titleIndex, adapterOptions))
         .filter((summary): summary is SessionSummary => Boolean(summary))
         .filter((summary) => matchesSessionFilters(summary, filters))
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
@@ -233,7 +309,10 @@ export function createCodexAdapter(root: string): SourceAdapter {
         return []
       }
 
-      return extractRolloutTurns(filePath, readJsonl(filePath)).map(toConversationTurn)
+      return (
+        readCachedRolloutTurns(filePath, adapterOptions) ??
+        extractRolloutTurns(filePath, readJsonl(filePath)).map(toConversationTurn)
+      )
     }
   }
 }

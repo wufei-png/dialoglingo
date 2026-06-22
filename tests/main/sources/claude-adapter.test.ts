@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import fs from 'node:fs'
+import path from 'node:path'
+import { describe, expect, it, vi } from 'vitest'
+import { createSqliteSourceScanCache } from '../../../src/main/sources/cache'
 import { createClaudeAdapter } from '../../../src/main/sources/claude/adapter'
+import { createTestDb } from '../testDb'
 
 describe('createClaudeAdapter', () => {
   it('reads transcript turns from fixture jsonl', async () => {
@@ -61,5 +65,47 @@ describe('createClaudeAdapter', () => {
 
     expect(turns.map((turn) => turn.role)).toEqual(['user', 'assistant'])
     expect(turns[1]?.text).toContain('useful phrasing practice')
+  })
+
+  it('reuses cached transcript parses when the Claude CLI file fingerprint is unchanged', async () => {
+    const db = createTestDb()
+    const cache = createSqliteSourceScanCache(db)
+    const adapter = createClaudeAdapter('tests/fixtures/claude', { cache })
+    const transcriptPath = path.normalize(
+      'tests/fixtures/claude/projects/-workspace-demo/claude-session-1.jsonl'
+    )
+    const readFile = vi.spyOn(fs, 'readFileSync')
+    const countTranscriptReads = () =>
+      readFile.mock.calls.filter(
+        ([file]) => path.normalize(String(file)) === transcriptPath
+      ).length
+
+    try {
+      await adapter.listSessions({
+        query: '',
+        timeRange: null,
+        projects: [],
+        platforms: [],
+        includeArchived: false
+      })
+      expect(countTranscriptReads()).toBeGreaterThan(0)
+
+      readFile.mockClear()
+
+      const sessions = await adapter.listSessions({
+        query: '',
+        timeRange: null,
+        projects: [],
+        platforms: [],
+        includeArchived: false
+      })
+
+      expect(countTranscriptReads()).toBe(0)
+      expect(sessions[0]?.turns?.[0]?.text).toContain(
+        'How should we structure state?'
+      )
+    } finally {
+      readFile.mockRestore()
+    }
   })
 })

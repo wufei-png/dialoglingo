@@ -3,10 +3,13 @@ import path from 'node:path'
 import {
   detectLanguageHint,
   matchesSessionFilters,
+  type CachedSessionParse,
   type ConversationTurn,
   type SessionFilterInput,
   type SessionSummary,
-  type SourceAdapter
+  type SourceAdapter,
+  type SourceAdapterOptions,
+  type SourceFileFingerprint
 } from '../types'
 import { logger } from '../../logging'
 
@@ -81,6 +84,14 @@ function readJsonl(filePath: string): JsonMap[] {
     .split('\n')
     .filter(Boolean)
     .map((line) => JSON.parse(line) as JsonMap)
+}
+
+function getFileFingerprint(filePath: string): SourceFileFingerprint {
+  const stats = fs.statSync(filePath)
+  return {
+    sizeBytes: stats.size,
+    mtimeMs: stats.mtimeMs
+  }
 }
 
 function readJsonFile(filePath: string): JsonMap | null {
@@ -266,6 +277,73 @@ function toConversationTurn({
   return turn
 }
 
+function summarizeCliTranscript(filePath: string): SessionSummary {
+  const rows = readJsonl(filePath)
+  const turns = extractClaudeTurns(filePath, rows)
+
+  const firstTurn = turns[0]
+  const firstRow = turns[0]?.row ?? rows[0] ?? {}
+  const startedAt = String(firstRow.timestamp ?? '')
+  const updatedAt =
+    turns.at(-1)?.timestamp ||
+    startedAt ||
+    new Date(fs.statSync(filePath).mtimeMs).toISOString()
+
+  return {
+    id:
+      String(firstRow.sessionId ?? '').trim() ||
+      path.basename(filePath, '.jsonl'),
+    sourceType: 'claude' as const,
+    title: firstTurn?.text.slice(0, 80) || path.basename(filePath, '.jsonl'),
+    projectPath: String(firstRow.cwd ?? ''),
+    startedAt,
+    updatedAt,
+    preview: firstTurn?.text ?? '',
+    locator: filePath,
+    archived: false,
+    turns: turns.map(toConversationTurn)
+  }
+}
+
+function fromCachedCliTranscript(cached: CachedSessionParse): SessionSummary {
+  return {
+    ...cached.summary,
+    turns: cached.turns
+  }
+}
+
+function loadCliTranscriptSummary(filePath: string, options?: SourceAdapterOptions) {
+  const fingerprint = getFileFingerprint(filePath)
+  const cached = options?.cache?.read({
+    sourceType: 'claude',
+    locator: filePath,
+    fingerprint
+  })
+
+  if (cached) {
+    return fromCachedCliTranscript(cached)
+  }
+
+  const summary = summarizeCliTranscript(filePath)
+  options?.cache?.write({
+    sourceType: 'claude',
+    locator: filePath,
+    fingerprint,
+    summary,
+    turns: summary.turns ?? []
+  })
+  return summary
+}
+
+function readCachedCliTurns(filePath: string, options?: SourceAdapterOptions) {
+  const fingerprint = getFileFingerprint(filePath)
+  return options?.cache?.read({
+    sourceType: 'claude',
+    locator: filePath,
+    fingerprint
+  })?.turns
+}
+
 function findSessionFile(root: string, sessionId: string) {
   return walkProjectLogs(root).find((filePath) => {
     if (path.basename(filePath, '.jsonl') === sessionId) {
@@ -288,7 +366,10 @@ function normalizeClaudeAdapterPaths(rootOrPaths: string | ClaudeAdapterPaths) {
     : rootOrPaths
 }
 
-export function createClaudeAdapter(rootOrPaths: string | ClaudeAdapterPaths): SourceAdapter {
+export function createClaudeAdapter(
+  rootOrPaths: string | ClaudeAdapterPaths,
+  adapterOptions?: SourceAdapterOptions
+): SourceAdapter {
   const paths = normalizeClaudeAdapterPaths(rootOrPaths)
 
   return {
@@ -296,33 +377,7 @@ export function createClaudeAdapter(rootOrPaths: string | ClaudeAdapterPaths): S
       const desktopMetadata = readDesktopCodeSessionMetadata(paths.desktopCodeSessionRoot)
 
       return walkProjectLogs(paths.cliRoot)
-        .map((filePath) => {
-          const rows = readJsonl(filePath)
-          const turns = extractClaudeTurns(filePath, rows)
-
-          const firstTurn = turns[0]
-          const firstRow = turns[0]?.row ?? rows[0] ?? {}
-          const startedAt = String(firstRow.timestamp ?? '')
-          const updatedAt =
-            turns.at(-1)?.timestamp ||
-            startedAt ||
-            new Date(fs.statSync(filePath).mtimeMs).toISOString()
-
-          return {
-            id:
-              String(firstRow.sessionId ?? '').trim() ||
-              path.basename(filePath, '.jsonl'),
-            sourceType: 'claude' as const,
-            title: firstTurn?.text.slice(0, 80) || path.basename(filePath, '.jsonl'),
-            projectPath: String(firstRow.cwd ?? ''),
-            startedAt,
-            updatedAt,
-            preview: firstTurn?.text ?? '',
-            locator: filePath,
-            archived: false,
-            turns: turns.map(toConversationTurn)
-          }
-        })
+        .map((filePath) => loadCliTranscriptSummary(filePath, adapterOptions))
         .map((summary) =>
           applyDesktopCodeMetadata(summary, desktopMetadata.get(summary.id))
         )
@@ -339,7 +394,10 @@ export function createClaudeAdapter(rootOrPaths: string | ClaudeAdapterPaths): S
         return []
       }
 
-      return extractClaudeTurns(filePath, readJsonl(filePath)).map(toConversationTurn)
+      return (
+        readCachedCliTurns(filePath, adapterOptions) ??
+        extractClaudeTurns(filePath, readJsonl(filePath)).map(toConversationTurn)
+      )
     }
   }
 }
