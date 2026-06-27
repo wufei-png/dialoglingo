@@ -89,6 +89,8 @@ const zhCN = {
   },
   search: {
     filterArea: '筛选区',
+    filters: '筛选',
+    viewOptions: '视图',
     typeKeywords: '输入关键词...',
     searchScope: '搜索范围',
     searchInAll: '搜索全部',
@@ -107,6 +109,9 @@ const zhCN = {
     groupByProject: '项目',
     selectAll: '全选',
     deselectAll: '全不选',
+    selectVisible: '选择可见项',
+    deselectVisible: '取消选择可见项',
+    clearSelected: '清除已选',
     selectGroup: '全选本组',
     deselectGroup: '取消全选本组',
     selected: '已选择',
@@ -160,6 +165,7 @@ const zhCN = {
     resumeFailed: '恢复失败。',
     restartFailed: '重新生成失败。',
     itemsCount: '{{count}} 个条目',
+    sourceRefsCount: '{{count}} 个来源',
     noItemsInView: '当前视图没有学习册条目。',
     tabs: {
       all: '全部',

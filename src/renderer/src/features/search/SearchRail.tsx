@@ -241,141 +241,157 @@ export function SearchRail(props: {
         </div>
 
         <section className="filter-area" aria-label={t('search.filterArea')}>
-          <div className="filter-area-label">{t('search.filterArea')}</div>
+          <div className="search-control-section">
+            <p className="filter-area-label">{t('search.filters')}</p>
+            <div className="search-control-stack">
+              <div className="select-with-icon">
+                <CalendarClock className="field-icon" aria-hidden="true" size={15} strokeWidth={2} />
+                <select
+                  aria-label={t('search.timeRange')}
+                  value={props.timeRange}
+                  onChange={(event) =>
+                    props.onTimeRangeChange(event.currentTarget.value as SearchTimeRange)
+                  }
+                >
+                  {timeRangeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="filter-control-stack">
-            <div className="select-with-icon">
-              <CalendarClock className="field-icon" aria-hidden="true" size={15} strokeWidth={2} />
-              <select
-                aria-label={t('search.timeRange')}
-                value={props.timeRange}
-                onChange={(event) =>
-                  props.onTimeRangeChange(event.currentTarget.value as SearchTimeRange)
+              <CollapsibleFilterSection
+                icon={Monitor}
+                title={t('search.platform')}
+                summary={`${props.platformFilter.length}/${PLATFORM_OPTIONS.length}`}
+                expanded={openFilterSection === 'platform'}
+                onExpandedChange={(expanded) =>
+                  setOpenFilterSection(expanded ? 'platform' : null)
                 }
               >
-                {timeRangeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <CollapsibleFilterSection
-              icon={Monitor}
-              title={t('search.platform')}
-              summary={`${props.platformFilter.length}/${PLATFORM_OPTIONS.length}`}
-              expanded={openFilterSection === 'platform'}
-              onExpandedChange={(expanded) =>
-                setOpenFilterSection(expanded ? 'platform' : null)
-              }
-            >
-              <div className="filter-options">
-                {PLATFORM_OPTIONS.map((platform) => (
-                  <button
-                    key={platform}
-                    type="button"
-                    className="filter-option-row"
-                    aria-pressed={props.platformFilter.includes(platform)}
-                    onClick={() =>
-                      props.onPlatformFilterChange(
-                        togglePlatformFilter(props.platformFilter, platform)
-                      )
-                    }
-                  >
-                    <span
-                      className={
-                        props.platformFilter.includes(platform)
-                          ? 'selection-button filter-option-check is-selected'
-                          : 'selection-button filter-option-check'
+                <div className="filter-options">
+                  {PLATFORM_OPTIONS.map((platform) => (
+                    <button
+                      key={platform}
+                      type="button"
+                      className="filter-option-row"
+                      aria-pressed={props.platformFilter.includes(platform)}
+                      onClick={() =>
+                        props.onPlatformFilterChange(
+                          togglePlatformFilter(props.platformFilter, platform)
+                        )
                       }
-                      aria-hidden="true"
                     >
-                      <span className="selection-button-check" aria-hidden="true" />
-                    </span>
-                    <span className="filter-option-label">{PLATFORM_LABELS[platform]}</span>
-                  </button>
-                ))}
-              </div>
-            </CollapsibleFilterSection>
+                      <span
+                        className={
+                          props.platformFilter.includes(platform)
+                            ? 'selection-button filter-option-check is-selected'
+                            : 'selection-button filter-option-check'
+                        }
+                        aria-hidden="true"
+                      >
+                        <span className="selection-button-check" aria-hidden="true" />
+                      </span>
+                      <span className="filter-option-label">{PLATFORM_LABELS[platform]}</span>
+                    </button>
+                  ))}
+                </div>
+              </CollapsibleFilterSection>
 
-            <CollapsibleFilterSection
-              icon={Folder}
-              title={t('search.projects')}
-              summary={`${selectedProjectCount}/${props.projects.length}`}
-              expanded={openFilterSection === 'projects'}
-              onExpandedChange={(expanded) =>
-                setOpenFilterSection(expanded ? 'projects' : null)
-              }
-            >
-              <div className="filter-options">
-                {props.projects.map((project) => (
-                  <button
-                    key={project.id}
-                    type="button"
-                    className="filter-option-row"
-                    title={project.localPath}
-                    aria-pressed={props.selectedProjectIds.has(project.id)}
-                    onClick={() => toggleProject(project.id)}
-                  >
-                    <span
-                      className={
-                        props.selectedProjectIds.has(project.id)
-                          ? 'selection-button filter-option-check is-selected'
-                          : 'selection-button filter-option-check'
-                      }
-                      aria-hidden="true"
-                    >
-                      <span className="selection-button-check" aria-hidden="true" />
-                    </span>
-                    <span className="filter-option-label">{project.name}</span>
-                  </button>
-                ))}
-              </div>
-            </CollapsibleFilterSection>
-
-            <CollapsibleFilterSection
-              icon={Rows3}
-              title={t('search.groupBy')}
-              summary={activeGroupByLabel}
-              className="group-by-filter-section"
-              expanded={openFilterSection === 'groupBy'}
-              onExpandedChange={(expanded) =>
-                setOpenFilterSection(expanded ? 'groupBy' : null)
-              }
-            >
-              <div className="group-by-options" role="group" aria-label={t('search.groupBy')}>
-                {groupByOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className={
-                      props.groupBy === option.value
-                        ? 'group-by-option is-active'
-                        : 'group-by-option'
-                    }
-                    aria-pressed={props.groupBy === option.value}
-                    onClick={() => props.onGroupByChange(option.value)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </CollapsibleFilterSection>
-            <div className="search-selection-actions">
-              <button
-                type="button"
-                disabled={filterSelectionDisabled}
-                onClick={() =>
-                  props.onSetSessionSelection(
-                    filteredSessionIds,
-                    !allFilteredSessionsSelected
-                  )
+              <CollapsibleFilterSection
+                icon={Folder}
+                title={t('search.projects')}
+                summary={`${selectedProjectCount}/${props.projects.length}`}
+                expanded={openFilterSection === 'projects'}
+                onExpandedChange={(expanded) =>
+                  setOpenFilterSection(expanded ? 'projects' : null)
                 }
               >
-                {allFilteredSessionsSelected ? t('search.deselectAll') : t('search.selectAll')}
-              </button>
+                <div className="filter-options">
+                  {props.projects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      className="filter-option-row"
+                      title={project.localPath}
+                      aria-pressed={props.selectedProjectIds.has(project.id)}
+                      onClick={() => toggleProject(project.id)}
+                    >
+                      <span
+                        className={
+                          props.selectedProjectIds.has(project.id)
+                            ? 'selection-button filter-option-check is-selected'
+                            : 'selection-button filter-option-check'
+                        }
+                        aria-hidden="true"
+                      >
+                        <span className="selection-button-check" aria-hidden="true" />
+                      </span>
+                      <span className="filter-option-label">{project.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </CollapsibleFilterSection>
             </div>
+          </div>
+
+          <div className="search-control-section">
+            <p className="filter-area-label">{t('search.viewOptions')}</p>
+            <div className="search-control-stack">
+              <CollapsibleFilterSection
+                icon={Rows3}
+                title={t('search.groupBy')}
+                summary={activeGroupByLabel}
+                className="group-by-filter-section"
+                expanded={openFilterSection === 'groupBy'}
+                onExpandedChange={(expanded) =>
+                  setOpenFilterSection(expanded ? 'groupBy' : null)
+                }
+              >
+                <div className="group-by-options" role="group" aria-label={t('search.groupBy')}>
+                  {groupByOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={
+                        props.groupBy === option.value
+                          ? 'group-by-option is-active'
+                          : 'group-by-option'
+                      }
+                      aria-pressed={props.groupBy === option.value}
+                      onClick={() => props.onGroupByChange(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </CollapsibleFilterSection>
+            </div>
+          </div>
+
+          <div className="search-selection-actions">
+            <button
+              type="button"
+              disabled={filterSelectionDisabled}
+              onClick={() =>
+                props.onSetSessionSelection(
+                  filteredSessionIds,
+                  !allFilteredSessionsSelected
+                )
+              }
+            >
+              {allFilteredSessionsSelected
+                ? t('search.deselectVisible')
+                : t('search.selectVisible')}
+            </button>
+            <button
+              type="button"
+              disabled={props.selectedSessionIds.size === 0}
+              onClick={() => props.onSetSessionSelection(selectedSessionIds, false)}
+            >
+              {t('search.clearSelected')}
+            </button>
           </div>
         </section>
 

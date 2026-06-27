@@ -25,6 +25,7 @@ type Props = {
   quiz: string
   quizAnswer: string
   tags: string
+  sourceRefCount: number
   deleted?: boolean
   selected: boolean
   modified: boolean
@@ -151,41 +152,47 @@ export function WorkbookCard(props: Props) {
       ].filter(Boolean).join(' ')}
       onClick={props.onSelect}
     >
+      <div className="workbook-card-ribbon" aria-hidden="true" />
       <div className="workbook-card-header">
-        <div>
+        <div className="workbook-card-heading">
           <div className="workbook-card-title-row">
             <span className="workbook-card-kicker">
               {t(`workbook.itemTypes.${props.itemType}`)}
             </span>
-            <div className="workbook-card-actions">
-              {props.modified ? (
-                <button type="button" onClick={props.onRevert}>
-                  <IconLabel icon={Undo2}>{t('common.revert')}</IconLabel>
-                </button>
-              ) : null}
-              <button type="button" onClick={props.onOpenSource}>
-                <IconLabel icon={FileSearch}>{t('workbook.actions.viewSource')}</IconLabel>
-              </button>
-              {props.deleted ? (
-                <button type="button" onClick={props.onRestore}>
-                  <IconLabel icon={RotateCcw}>{t('workbook.actions.restore')}</IconLabel>
-                </button>
-              ) : (
-                <button type="button" onClick={props.onDelete}>
-                  <IconLabel icon={Trash2}>{t('workbook.actions.delete')}</IconLabel>
-                </button>
-              )}
-            </div>
+            <span className="workbook-card-source-count">
+              {t('workbook.sourceRefsCount', { count: props.sourceRefCount })}
+            </span>
           </div>
           <p className="workbook-card-source">{draft.source}</p>
         </div>
-        <div className="workbook-card-status">
-          {props.modified ? <span>{t('workbook.status.modified')}</span> : null}
-          {props.deleted ? <span>{t('workbook.status.deleted')}</span> : null}
+        <div className="workbook-card-meta">
+          <div className="workbook-card-status">
+            {props.modified ? <span>{t('workbook.status.modified')}</span> : null}
+            {props.deleted ? <span>{t('workbook.status.deleted')}</span> : null}
+          </div>
+          <div className="workbook-card-actions">
+            {props.modified ? (
+              <button type="button" onClick={props.onRevert}>
+                <IconLabel icon={Undo2}>{t('common.revert')}</IconLabel>
+              </button>
+            ) : null}
+            <button type="button" onClick={props.onOpenSource}>
+              <IconLabel icon={FileSearch}>{t('workbook.actions.viewSource')}</IconLabel>
+            </button>
+            {props.deleted ? (
+              <button type="button" onClick={props.onRestore}>
+                <IconLabel icon={RotateCcw}>{t('workbook.actions.restore')}</IconLabel>
+              </button>
+            ) : (
+              <button type="button" onClick={props.onDelete}>
+                <IconLabel icon={Trash2}>{t('workbook.actions.delete')}</IconLabel>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <label className="workbook-field">
+      <label className="workbook-field workbook-field--primary">
         <span>{t('workbook.fields.target')}</span>
         <input
           ref={targetRef}
@@ -199,7 +206,7 @@ export function WorkbookCard(props: Props) {
         />
       </label>
 
-      <label className="workbook-field">
+      <label className="workbook-field workbook-field--secondary">
         <span>{t('workbook.fields.gloss')}</span>
         <input
           value={draft.gloss}

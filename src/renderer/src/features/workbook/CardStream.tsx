@@ -97,6 +97,7 @@ export function CardStream(props: {
                 quiz={String(row.currentSnapshot.quizPrompt ?? '')}
                 quizAnswer={String(row.currentSnapshot.quizAnswer ?? '')}
                 tags={String((row.currentSnapshot.tags ?? []).join(', '))}
+                sourceRefCount={row.sourceRefs.length}
                 deleted={row.state === 'deleted'}
                 selected={props.selectedItemId === row.id}
                 modified={row.isEdited}

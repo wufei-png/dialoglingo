@@ -83,6 +83,8 @@ const en = {
   },
   search: {
     filterArea: 'Filter area',
+    filters: 'Filters',
+    viewOptions: 'View',
     typeKeywords: 'Type keywords...',
     searchScope: 'Search scope',
     searchInAll: 'Search in all',
@@ -101,6 +103,9 @@ const en = {
     groupByProject: 'Project',
     selectAll: 'Select all',
     deselectAll: 'Deselect all',
+    selectVisible: 'Select visible',
+    deselectVisible: 'Deselect visible',
+    clearSelected: 'Clear selected',
     selectGroup: 'Select group',
     deselectGroup: 'Deselect group',
     selected: 'Selected',
@@ -154,6 +159,7 @@ const en = {
     resumeFailed: 'Resume failed.',
     restartFailed: 'Restart failed.',
     itemsCount: '{{count}} items',
+    sourceRefsCount: '{{count}} source refs',
     noItemsInView: 'No workbook items in this view.',
     tabs: {
       all: 'All',
