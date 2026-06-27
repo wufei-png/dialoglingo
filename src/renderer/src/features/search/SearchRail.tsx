@@ -44,6 +44,9 @@ type GenerationPromptPreview = {
 const SEARCH_SCOPE_VALUES = ['all', 'titles', 'transcript'] as const
 type SearchTimeRange = 'last-7-days' | 'last-30-days' | 'all-time'
 type OpenFilterSection = 'platform' | 'projects' | 'groupBy'
+const FILTER_COLLAPSE_MAX_HEIGHT = 180
+const FILTER_COLLAPSE_DURATION_MS = 170
+const FILTER_COLLAPSE_EASING = 'cubic-bezier(0.23, 1, 0.32, 1)'
 
 function CollapsibleFilterSection(props: {
   title: string
@@ -93,7 +96,16 @@ function CollapsibleFilterSection(props: {
         </span>
         <span className="collapsible-section-summary">{props.summary}</span>
       </button>
-      <MeasuredCollapse id={bodyId} className="collapsible-section-body" open={expanded}>
+      <MeasuredCollapse
+        id={bodyId}
+        className="collapsible-section-body"
+        durationMs={FILTER_COLLAPSE_DURATION_MS}
+        easing={FILTER_COLLAPSE_EASING}
+        exitDurationMs={FILTER_COLLAPSE_DURATION_MS}
+        exitEasing={FILTER_COLLAPSE_EASING}
+        maxHeightPx={FILTER_COLLAPSE_MAX_HEIGHT}
+        open={expanded}
+      >
         <div className="collapsible-section-content">{props.children}</div>
       </MeasuredCollapse>
     </section>
@@ -370,31 +382,7 @@ export function SearchRail(props: {
             </div>
           </div>
 
-          <div className="search-selection-actions">
-            <button
-              type="button"
-              disabled={filterSelectionDisabled}
-              onClick={() =>
-                props.onSetSessionSelection(
-                  filteredSessionIds,
-                  !allFilteredSessionsSelected
-                )
-              }
-            >
-              {allFilteredSessionsSelected
-                ? t('search.deselectVisible')
-                : t('search.selectVisible')}
-            </button>
-            <button
-              type="button"
-              disabled={props.selectedSessionIds.size === 0}
-              onClick={() => props.onSetSessionSelection(selectedSessionIds, false)}
-            >
-              {t('search.clearSelected')}
-            </button>
-          </div>
         </section>
-
         <SessionTree
           groups={props.groups}
           navigationRowId={props.navigationRowId}
@@ -407,9 +395,24 @@ export function SearchRail(props: {
       </div>
 
       <footer className="search-footer">
-        <p className="search-footer-selection">
-          {t('search.selectedSessionsCount', { count: props.selectedSessionIds.size })}
-        </p>
+        <div className="search-footer-selection-row">
+          <p className="search-footer-selection">
+            {t('search.selectedSessionsCount', { count: props.selectedSessionIds.size })}
+          </p>
+          <button
+            type="button"
+            className="search-select-all-button"
+            disabled={filterSelectionDisabled}
+            onClick={() =>
+              props.onSetSessionSelection(
+                filteredSessionIds,
+                !allFilteredSessionsSelected
+              )
+            }
+          >
+            {allFilteredSessionsSelected ? t('search.deselectAll') : t('search.selectAll')}
+          </button>
+        </div>
         <div className="search-footer-actions">
           <button type="button" onClick={props.onRescan}>
             <IconLabel icon={RefreshCw}>{t('search.rescan')}</IconLabel>

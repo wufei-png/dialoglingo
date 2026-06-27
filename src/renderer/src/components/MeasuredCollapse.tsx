@@ -19,6 +19,7 @@ type Props = {
   exitDurationMs?: number
   exitEasing?: string
   id?: string
+  maxHeightPx?: number
   onHeightChange?: () => void
   open: boolean
 }
@@ -31,6 +32,7 @@ export function MeasuredCollapse({
   exitDurationMs = 220,
   exitEasing = DEFAULT_EXIT_EASE,
   id,
+  maxHeightPx,
   onHeightChange,
   open
 }: Props) {
@@ -58,6 +60,14 @@ export function MeasuredCollapse({
         callback()
       })
     })
+  }
+
+  function getMeasuredHeight(node: HTMLDivElement) {
+    if (typeof maxHeightPx === 'number') {
+      return Math.min(node.scrollHeight, maxHeightPx)
+    }
+
+    return node.scrollHeight
   }
 
   useEffect(() => {
@@ -107,7 +117,7 @@ export function MeasuredCollapse({
       setHeight('0px')
       setOpacity(0)
       runAfterNextPaint(() => {
-        setHeight(`${node.scrollHeight}px`)
+        setHeight(`${getMeasuredHeight(node)}px`)
         setOpacity(1)
         onHeightChangeRef.current?.()
       })
@@ -120,7 +130,7 @@ export function MeasuredCollapse({
       setHeight('0px')
       onHeightChangeRef.current?.()
     })
-  }, [open, present, shouldReduceMotion])
+  }, [maxHeightPx, open, present, shouldReduceMotion])
 
   if (!present) {
     return null
@@ -128,6 +138,7 @@ export function MeasuredCollapse({
 
   const style: CSSProperties = {
     height,
+    maxHeight: typeof maxHeightPx === 'number' ? `${maxHeightPx}px` : undefined,
     opacity,
     overflow: 'hidden',
     transition: shouldReduceMotion

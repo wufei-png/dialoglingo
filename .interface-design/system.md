@@ -52,6 +52,9 @@ Search remains a compact left rail paired with a normalized preview pane.
 - Search input is the primary control.
 - Time, platform, and project are data filters.
 - Group by is a view control, not a data filter.
+- Platform, Projects, and Group by disclosures stay inline in the rail; they are not popovers.
+- Long filter lists cap at 180px and scroll inside a solid panel, with the same short height/opacity motion for opening and closing.
+- The current-result selection toggle is a compact `Select all` / `Deselect all` control in the footer selection row, next to the selected-session count.
 - Session rows stay title-only; snippets belong in the preview pane.
 - The footer keeps selected count, rescan/settings, and the primary generate action.
 - Clicking a row focuses preview; the checkbox toggles selection.
